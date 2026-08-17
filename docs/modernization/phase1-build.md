@@ -2,7 +2,7 @@
 
 ## Status
 
-Blocked at local-only preflight. No dependency was downloaded, substituted, registered, or removed.
+Blocked at the Phase 1A local-only dependency gate. No dependency was downloaded, substituted, registered, or removed.
 
 The managed build can be evaluated by the .NET 4.x MSBuild host using the 3.5 toolset, but this machine does not currently contain all historical build inputs. A faithful build must retain the existing DirectDraw and DirectAudio behavior during Phase 1; introducing an audio stub or managed renderer here would violate phase isolation.
 
@@ -12,9 +12,11 @@ The managed build can be evaluated by the .NET 4.x MSBuild host using the 3.5 to
 
 - `C:\Windows\Microsoft.NET\Framework\v3.5\MSBuild.exe` exists but fails before project evaluation with MSB4141 because the machine has an invalid MSBuild ToolsVersion 14.0 registry entry with no `MSBuildToolsPath`.
 - `C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe` can evaluate the projects with `/toolsversion:3.5`.
-- The .NET 2.0 MSBuild host can start but reports a missing .NET Framework 2.0 SDK and cannot correctly evaluate solution-relative post-build behavior when a project is invoked directly.
+- The .NET 2.0 MSBuild host can start. Its `GetFrameworkPaths` target reports a missing .NET Framework 2.0 SDK, but the target succeeds and no FreeTrain build target consumes the resulting SDK-directory property. Direct project invocation still cannot reproduce solution-relative post-build behavior by itself.
 
 The repository must not repair machine-wide registry state. The build wrapper should select a working host explicitly.
+
+The standalone .NET Framework 2.0 SDK has been removed from the blocker list. `phase1a-dependency-classification.md` records the exact task/target/property trace and proves that COM-wrapper generation uses the in-process `TypeLibConverter` rather than SDK `TlbImp.exe`.
 
 ### DirectX 7 rendering type library
 
@@ -49,7 +51,7 @@ The system `Quartz` type library is registered and `quartz.dll` exists in both 3
 - The COM class is not registered on this machine.
 - The driver registers the DLL in process immediately before starting the game.
 
-Building the native DLL from source still requires an identified compatible C++/ATL toolchain. Using the preserved binary may support an interim legacy smoke test, but it does not satisfy the eventual from-source build gate.
+The two checked copies are byte-identical, pinned by SHA-256, structurally match the checked IDL/interop assembly, load on the current machine in a 32-bit process, and can create `IAlphaBlender` through their own class factory without registration. The preserved binary is therefore accepted for the Phase 1 runnable-preservation baseline. Building it from source remains a separate possible later gate, not a Phase 1 blocker.
 
 ## Diagnostic-process correction
 
@@ -60,9 +62,8 @@ The first probes were mistakenly run in parallel against shared `obj` directorie
 | Blocker | Required resolution |
 |---|---|
 | Missing `DxVBLibA` type-library source or generated interop assembly | Supply a provenance-known local DirectX 8 Visual Basic type library/runtime input; do not fetch an unverified binary |
-| Native VC++/ATL toolchain not identified | Establish a compatible isolated build environment or explicitly classify the preserved native DLL as a temporary binary input |
 | MSBuild 3.5 host broken by machine registry | Use an explicit working host with the 3.5 toolset; do not modify global registry as part of the repository |
-| .NET Framework 2.0 SDK registry/root absent | Determine whether MSBuild 3.5 reference assemblies are sufficient or whether the historical SDK is required for all targets |
+| `FreeTrain.Controls` depends on checked-in `MsHtmlHost.dll` through historical user-specific reference paths | Make the existing binary a repository-local build reference in Phase 1B without refactoring the control |
 | No save/screenshot/runtime fixtures | Collect outside the source tree before behavioral replacement phases |
 
 ## Phase 1 implementation order
@@ -70,7 +71,7 @@ The first probes were mistakenly run in parallel against shared `obj` directorie
 1. Obtain or identify the missing local DirectX 8 audio type-library input with provenance.
 2. Generate DirectX 7/8 and Quartz interop assemblies deterministically into `.artifacts`.
 3. Build managed projects serially with an explicitly selected MSBuild host/toolset.
-4. Establish the native-alpha build or temporarily pin the preserved binary with its SHA-256 and provenance status.
+4. Copy the pinned native-alpha binary into the package and verify its x86 registration/activation path in a controlled legacy runtime environment.
 5. Build `Driver` as `FreeTrain.exe` and package resources without using the interactive `pause` path.
 6. Validate output architecture, assembly identities, resource layout, and plugin loading.
 7. Run a smoke test only in an environment capable of activating the legacy COM components.

@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $RepositoryRoot).Path
 $source = Join-Path $root 'FreeTrain'
 $issues = [Collections.Generic.List[string]]::new()
+$observations = [Collections.Generic.List[string]]::new()
 
 function Test-TypeLibraryRegistration {
     param([Parameter(Mandatory)][string] $Guid)
@@ -59,12 +60,12 @@ $dx7Guid = '{E1211242-8E94-11D1-8808-00C04FC2C602}'
 $dx8Guid = '{E1211242-8E94-11D1-8808-00C04FC2C603}'
 $quartzGuid = '{56A868B0-0AD4-11CE-B03A-0020AF0BA770}'
 $dx7File = Join-Path $source 'extlib/dx7vb.dll'
-$dx8Candidates = @(
+$dx8TypeLibraryCandidates = @(
     (Join-Path $source 'extlib/dx8vb.dll'),
-    (Join-Path $source 'extlib/Interop.DxVBLibA.dll'),
     'C:\Windows\SysWOW64\dx8vb.dll',
     'C:\Windows\System32\dx8vb.dll'
 )
+$dx8Interop = Join-Path $source 'extlib/Interop.DxVBLibA.dll'
 $tlbImpCandidates = @(
     'C:\Program Files\Microsoft SDKs\Windows\v6.0A\bin\TlbImp.exe',
     'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools\TlbImp.exe'
@@ -74,14 +75,17 @@ $dx7Registered = Test-TypeLibraryRegistration $dx7Guid
 $dx8Registered = Test-TypeLibraryRegistration $dx8Guid
 $quartzRegistered = Test-TypeLibraryRegistration $quartzGuid
 $dx7SourcePresent = Test-Path -LiteralPath $dx7File -PathType Leaf
-$dx8Source = $dx8Candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+$dx8TypeLibrary = $dx8TypeLibraryCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+$dx8InteropPresent = Test-Path -LiteralPath $dx8Interop -PathType Leaf
 $tlbImp = $tlbImpCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
 
 if (-not $dx7Registered -and (-not $dx7SourcePresent -or $null -eq $tlbImp)) {
     $issues.Add('DxVBLib is unregistered and cannot be generated from the preserved local input.')
 }
-if (-not $dx8Registered -and $null -eq $dx8Source) {
+if (-not $dx8Registered -and $null -eq $dx8TypeLibrary -and -not $dx8InteropPresent) {
     $issues.Add('DxVBLibA is unregistered and no local DirectX 8 type-library or interop input exists.')
+} elseif (-not $dx8Registered -and $null -eq $dx8TypeLibrary) {
+    $issues.Add('A DxVBLibA interop assembly exists, but no DirectX 8 Visual Basic runtime/type-library input is available for the runnable baseline.')
 }
 if (-not $quartzRegistered) {
     $issues.Add('QuartzTypeLib is not registered.')
@@ -96,16 +100,39 @@ if ($null -ne $sdkProperties) {
     }
 }
 if ([string]::IsNullOrWhiteSpace([string]$sdkRoot)) {
-    $issues.Add('.NET Framework SDKInstallRootv2.0 is not configured.')
+    $observations.Add('.NET Framework SDKInstallRootv2.0 is not configured; Phase 1A proved that this informational property is not consumed by the FreeTrain build.')
 }
 
 $vcBuild = Get-Command 'vcbuild.exe' -ErrorAction SilentlyContinue
-if ($null -eq $vcBuild) {
-    $issues.Add('VCBuild/compatible native ATL toolchain is not available on PATH.')
-}
-
-$alphaDll = Join-Path $source 'bin/Debug/DirectDraw.AlphaBlend.dll'
+$alphaDebugDll = Join-Path $source 'bin/Debug/DirectDraw.AlphaBlend.dll'
+$alphaReleaseDll = Join-Path $source 'bin/Release/DirectDraw.AlphaBlend.dll'
 $alphaInterop = Join-Path $source 'lib/DirectDraw.net/Interop.DirectDrawAlphaBlendLib.DLL'
+$expectedAlphaHash = 'B8153302A76F3768528453D18C9025A5017B0B5EA2350F9B3F57A8A2B37F165D'
+$alphaFilesPresent =
+    (Test-Path -LiteralPath $alphaDebugDll -PathType Leaf) -and
+    (Test-Path -LiteralPath $alphaReleaseDll -PathType Leaf) -and
+    (Test-Path -LiteralPath $alphaInterop -PathType Leaf)
+
+$alphaDebugHash = if (Test-Path -LiteralPath $alphaDebugDll -PathType Leaf) {
+    (Get-FileHash -LiteralPath $alphaDebugDll -Algorithm SHA256).Hash
+} else {
+    $null
+}
+$alphaReleaseHash = if (Test-Path -LiteralPath $alphaReleaseDll -PathType Leaf) {
+    (Get-FileHash -LiteralPath $alphaReleaseDll -Algorithm SHA256).Hash
+} else {
+    $null
+}
+$alphaPreservationReady =
+    $alphaFilesPresent -and
+    $alphaDebugHash -eq $expectedAlphaHash -and
+    $alphaReleaseHash -eq $expectedAlphaHash
+
+if ($null -eq $vcBuild -and -not $alphaPreservationReady) {
+    $issues.Add('Neither the verified pinned native-alpha binary set nor a VCBuild/compatible native ATL toolchain is available.')
+} elseif ($null -eq $vcBuild) {
+    $observations.Add('VCBuild is not available; Phase 1A accepted the checked native-alpha DLL and interop assembly for the preservation baseline.')
+}
 
 $report = [ordered]@{
     repositoryRoot = $root
@@ -122,7 +149,8 @@ $report = [ordered]@{
         directX8Audio = [ordered]@{
             guid = $dx8Guid
             registered = $dx8Registered
-            localInput = $dx8Source
+            typeLibraryInput = $dx8TypeLibrary
+            interopInput = if ($dx8InteropPresent) { $dx8Interop } else { $null }
         }
         quartz = [ordered]@{
             guid = $quartzGuid
@@ -130,11 +158,18 @@ $report = [ordered]@{
         }
     }
     nativeAlpha = [ordered]@{
-        prebuiltDll = (Test-Path -LiteralPath $alphaDll -PathType Leaf)
+        debugDll = (Test-Path -LiteralPath $alphaDebugDll -PathType Leaf)
+        releaseDll = (Test-Path -LiteralPath $alphaReleaseDll -PathType Leaf)
+        debugSha256 = $alphaDebugHash
+        releaseSha256 = $alphaReleaseHash
+        expectedSha256 = $expectedAlphaHash
+        copiesIdentical = ($null -ne $alphaDebugHash -and $alphaDebugHash -eq $alphaReleaseHash)
         interopAssembly = (Test-Path -LiteralPath $alphaInterop -PathType Leaf)
+        preservationBinaryAccepted = $alphaPreservationReady
         vcBuildOnPath = ($null -ne $vcBuild)
     }
     dotNet20SdkRoot = $sdkRoot
+    observations = $observations
     issues = $issues
 }
 

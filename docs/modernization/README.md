@@ -47,4 +47,5 @@ The original archive was not present in the attached workspace, so an archive SH
 ## Phase 1 documents
 
 - `phase1-build.md` — diagnostic results, local-only blockers, and build order
+- `phase1a-dependency-classification.md` — evidence-based dependency classes, DxVBLibA contract, .NET 2.0 SDK trace, and native-alpha binary decision
 - `eng/legacy-build-preflight.ps1` — non-mutating toolchain and dependency preflight
