@@ -26,7 +26,7 @@ Native projects span at least two generations:
 
 The solution contains Any CPU, Mixed Platforms, Win32, and x86 configurations. Core and DirectDraw projects specify x86 in at least their Debug configuration, consistent with 32-bit COM/native dependencies.
 
-## Main application discrepancy
+## Application composition
 
 `FreeTrain/core/FreeTrain.Core.csproj` declares:
 
@@ -34,9 +34,18 @@ The solution contains Any CPU, Mixed Platforms, Win32, and x86 configurations. C
 - `OutputType` = `Library` in its global, Debug, and Release property groups
 - `RootNamespace` = `freetrain`
 
-`FreeTrain/core/framework/MainWindow.cs` nevertheless contains `[STAThread] static void Main()` and another private `run(string[])` helper. The user-facing readme refers to running `FreeTrain.exe`, but no launcher project appears in `FreeTrain_VS2008.sln`.
+The apparent output-type discrepancy is explained by `FreeTrain/tools/Driver/Driver.csproj`, which is included in `FreeTrain_VS2008.sln` and declares:
 
-This is an archaeological question, not an invitation to change `OutputType` immediately. Phase 0 must explain whether the snapshot omits a launcher, whether a historical configuration transformed the project, or whether the project metadata is inconsistent. Phase 1 may alter it only after the historical arrangement is understood.
+- `AssemblyName` = `FreeTrain`
+- `OutputType` = `WinExe`
+- `StartupObject` = `Driver.Driver`
+- Output path = the repository-level `bin/Debug` or `bin/Release` directory
+
+The driver sets `Core.installationDirectory`, invokes `DllRegisterServer` from `DirectDraw.AlphaBlend.dll`, catches unhandled startup exceptions outside the debugger, and starts `new MainWindow(args, false)`. Its post-build event invokes `copyresources.bat`. This is the historical `FreeTrain.exe` host; `FreeTrain.Core` is intentionally a library consumed by the host and plugins.
+
+`MainWindow.cs` also contains an unused private `[STAThread] static void Main()` and a private `run(string[])` helper. Those appear to be historical residue because the library project cannot select them as an executable entry point. They should not be removed until compatibility work reaches normal cleanup.
+
+The driver’s Debug property group explicitly targets x86, but its Release property group does not. Because startup performs in-process registration of a 32-bit native DLL, Phase 1 must reproduce and then make the intended Release architecture explicit rather than relying on `AnyCPU` behavior.
 
 ## Build and packaging behavior
 
@@ -66,19 +75,19 @@ No legacy build was attempted because the classic build toolchain and COM regist
 
 The first reproducible build should include only:
 
-1. `FreeTrain.Core`
-2. `FreeTrain.Controls`
-3. `DirectDraw.net`
-4. `DirectAudio.net`
-5. Native `DirectDraw.AlphaBlend`
-6. Bundled compiled plugins required by the standard package
-7. Resource/plugin packaging
+1. `Driver` (`FreeTrain.exe` host)
+2. `FreeTrain.Core`
+3. `FreeTrain.Controls`
+4. `DirectDraw.net`
+5. `DirectAudio.net`
+6. Native `DirectDraw.AlphaBlend`
+7. Bundled compiled plugins required by the standard package
+8. Resource/plugin packaging
 
 Keep `NeoFT`, experiments, the DirectShow video recorder, and nonessential tools out of the critical path.
 
 ## Open questions and evidence required
 
-- What produced `FreeTrain.exe` from a project marked as a library?
 - Which exact Visual Studio/MSVC versions last built this revision?
 - Is .NET Framework 2.0 the runtime contract despite MSBuild 3.5 project upgrades?
 - Are COM interop assemblies expected to be generated or checked in elsewhere?
