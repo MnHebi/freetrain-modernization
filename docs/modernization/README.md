@@ -43,3 +43,8 @@ The original archive was not present in the attached workspace, so an archive SH
 - `renderer-compatibility.md` — facade boundary, behavioral oracles, and test taxonomy
 - `plugin-compatibility.md` — compatibility contracts and tiers
 - `save-compatibility.md` — legacy format evidence and security constraints
+
+## Phase 1 documents
+
+- `phase1-build.md` — diagnostic results, local-only blockers, and build order
+- `eng/legacy-build-preflight.ps1` — non-mutating toolchain and dependency preflight

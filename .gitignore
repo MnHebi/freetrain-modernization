@@ -1,0 +1,7 @@
+# Modernization build/probe outputs
+/.artifacts/
+
+# Legacy MSBuild intermediate/output directories. Historical binaries already
+# tracked by pristine/r389 remain tracked despite these patterns.
+**/obj/
+**/bin/
