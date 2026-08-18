@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
     [string] $RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
+    [string] $Dx8TypeLibraryPath,
+    [string] $LegacyInteropPath,
     [switch] $ReportOnly
 )
 
@@ -61,11 +63,15 @@ $dx8Guid = '{E1211242-8E94-11D1-8808-00C04FC2C603}'
 $quartzGuid = '{56A868B0-0AD4-11CE-B03A-0020AF0BA770}'
 $dx7File = Join-Path $source 'extlib/dx7vb.dll'
 $dx8TypeLibraryCandidates = @(
+    $Dx8TypeLibraryPath,
     (Join-Path $source 'extlib/dx8vb.dll'),
     'C:\Windows\SysWOW64\dx8vb.dll',
     'C:\Windows\System32\dx8vb.dll'
-)
-$dx8Interop = Join-Path $source 'extlib/Interop.DxVBLibA.dll'
+) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+$dx8InteropCandidates = @(
+    $(if (-not [string]::IsNullOrWhiteSpace($LegacyInteropPath)) { Join-Path $LegacyInteropPath 'Interop.DxVBLibA.dll' }),
+    (Join-Path $source 'extlib/Interop.DxVBLibA.dll')
+) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 $tlbImpCandidates = @(
     'C:\Program Files\Microsoft SDKs\Windows\v6.0A\bin\TlbImp.exe',
     'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools\TlbImp.exe'
@@ -76,7 +82,8 @@ $dx8Registered = Test-TypeLibraryRegistration $dx8Guid
 $quartzRegistered = Test-TypeLibraryRegistration $quartzGuid
 $dx7SourcePresent = Test-Path -LiteralPath $dx7File -PathType Leaf
 $dx8TypeLibrary = $dx8TypeLibraryCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-$dx8InteropPresent = Test-Path -LiteralPath $dx8Interop -PathType Leaf
+$dx8Interop = $dx8InteropCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+$dx8InteropPresent = $null -ne $dx8Interop
 $tlbImp = $tlbImpCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
 
 if (-not $dx7Registered -and (-not $dx7SourcePresent -or $null -eq $tlbImp)) {
@@ -150,7 +157,7 @@ $report = [ordered]@{
             guid = $dx8Guid
             registered = $dx8Registered
             typeLibraryInput = $dx8TypeLibrary
-            interopInput = if ($dx8InteropPresent) { $dx8Interop } else { $null }
+            interopInput = $dx8Interop
         }
         quartz = [ordered]@{
             guid = $quartzGuid

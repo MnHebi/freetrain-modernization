@@ -1,7 +1,19 @@
 # Modernization build/probe outputs
 /.artifacts/
 
+# Externally supplied legacy-media inputs. The Phase 1 wrapper verifies and
+# stages these locally; they are never repository inputs.
+/dx8vb.dll
+/dx8vb.zip
+/*.iso
+/FreeTrain20070604.zip
+/freetrain-code-r389-trunk.zip
+
 # Legacy MSBuild intermediate/output directories. Historical binaries already
 # tracked by pristine/r389 remain tracked despite these patterns.
 **/obj/
 **/bin/
+/FreeTrain/core/Debug/
+/FreeTrain/core/Release/
+/FreeTrain/plugins/jp.co.tripod.chiname.lib/*.dll
+/FreeTrain/plugins/jp.co.tripod.chiname.lib/*.pdb
