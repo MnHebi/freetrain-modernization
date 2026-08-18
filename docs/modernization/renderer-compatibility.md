@@ -73,6 +73,8 @@ The legacy DirectDraw renderer is not required to run on the Windows 11 developm
 
 Each fixture must record its origin as `captured-legacy`, `native-vector`, `historical-reference`, `manually-approved`, or `code-derived`.
 
+The functioning disposable XP SP3 x86 runtime is the active `captured-legacy` oracle for Phase 2. Renderer characterization is not gated on reconstructing the optional VCR auxiliary build: use lossless hypervisor screenshots and the documented fixture procedure, not the VCR plug-in. Preserve the VCR source and official binaries separately as historical evidence.
+
 ## Test taxonomy
 
 ### Primitive tests — exact
@@ -94,7 +96,7 @@ Primitive outputs require byte-for-byte equality.
 
 ### Complete-world tests — layered
 
-- Four rotations
+- North/south/east/west directional content variants; the checked legacy UI has a fixed quarter-view camera and no camera-rotation command
 - Day/night
 - Seasons
 - Water and underground cuts

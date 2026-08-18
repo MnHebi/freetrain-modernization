@@ -155,7 +155,12 @@
       <Package>{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</Package>
       <Private>True</Private>
     </ProjectReference>
-    <COMReference Include="DxVBLib">
+    <Reference Include="Interop.DxVBLib" Condition=" '$(LegacyInteropPath)' != '' ">
+      <Name>Interop.DxVBLib</Name>
+      <HintPath>$(LegacyInteropPath)\Interop.DxVBLib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <COMReference Include="DxVBLib" Condition=" '$(LegacyInteropPath)' == '' ">
       <Guid>{E1211242-8E94-11D1-8808-00C04FC2C602}</Guid>
       <VersionMajor>1</VersionMajor>
       <VersionMinor>0</VersionMinor>

@@ -2,13 +2,13 @@
 
 ## Status and stop point
 
-Phase 1A is an archaeological classification pass. No game source, project file, COM registration, machine registry value, SDK, or runtime was changed. No dependency was downloaded or installed.
+Phase 1A began as an archaeological classification pass. No game source, COM registration, machine registry value, SDK, or runtime was changed, and no dependency was downloaded or installed. A later user-supplied XP SP3 media copy satisfied the single unresolved input gate; the subsequent build integration is recorded in `phase1-build-report.md`.
 
-The runnable-preservation baseline is the historical x86 `FreeTrain.exe` host, its managed core libraries, the 22 plugin projects in `FreeTrain_VS2008.sln`, and the packaged resources under `core/res`, `plugins`, and `doc`. NeoFT, experiments, report generation, the DirectShow video recorder, and developer utilities are outside this gate.
+The runnable-preservation baseline is the historical x86 `FreeTrain.exe` host, its managed core libraries, the 22 plugin projects in `FreeTrain_VS2008.sln`, and the packaged resources under `core/res`, `plugins`, and `doc`. The VCR plug-in was historically distributed but is runtime-optional and built through a separate managed/native toolchain; reconstructing that auxiliary toolchain is outside and non-blocking for this gate. NeoFT, experiments, report generation, and developer utilities are likewise outside the gate.
 
 The result is:
 
-- `DxVBLibA` is the one unmet critical binary prerequisite. The repository proves the required type-library identity and source-facing API, but contains neither the type library/runtime nor a generated interop assembly.
+- `DxVBLibA` was the one unmet critical binary prerequisite. It is now satisfied by an external, ignored, Microsoft-catalog-verified `dx8vb.dll`; it remains outside Git.
 - The missing `.NET Framework SDKInstallRootv2.0` registry value is not a build blocker for this tree. It produces an informational `GetFrameworkSdkPath` message under MSBuild 2.0, but no repository target consumes the resulting property.
 - The checked-in `DirectDraw.AlphaBlend.dll` is acceptable as a pinned preservation-baseline binary. Rebuilding it is not required to start the managed legacy baseline.
 
@@ -43,7 +43,7 @@ The result is:
 | .NET Framework 2.0 runtime/reference assemblies | Projects omit `TargetFrameworkVersion`; both the 2.0 and 3.5 `Microsoft.Common.targets` default it to `v2.0`. The local 2.0 compiler and framework assemblies are present. | Accepted OS/framework prerequisite. This does not imply a requirement for the standalone .NET 2.0 SDK. |
 | MSBuild 4.x host with the 3.5 toolset | The 3.5 host is broken by an unrelated machine-wide ToolsVersion 14.0 registry entry. The 4.x host successfully evaluates the projects with `/toolsversion:3.5`, and `GetFrameworkPaths` finds the installed Windows SDK v6.0A. | Accepted build-host prerequisite for Phase 1; no registry repair is allowed. |
 | `dx7vb.dll` / `DxVBLib` | Checked-in Microsoft binary, 597,504 bytes, file version `5.1.2600.0`, SHA-256 `D69CDC170AAC0AE611ECA3BEE84E7BE346A3BA1B3C79216E13E87C8EE6CD2084`. A disposable local probe generated `Interop.DxVBLib.dll` and confirmed `DxVBLib.DirectX7Class`. | Accepted pinned binary/type-library input. Runtime activation or registration remains an environment prerequisite. |
-| `DxVBLibA` DirectX 8 VB audio type library/runtime | Required type-library GUID `{E1211242-8E94-11D1-8808-00C04FC2C603}`, version 1.0, LCID 0. See the dedicated provenance section below. | Correct category, but **unmet**: no provenance-known binary or interop assembly exists locally. This is the hard Phase 1A stop. |
+| `DxVBLibA` DirectX 8 VB audio type library/runtime | Required type-library GUID `{E1211242-8E94-11D1-8808-00C04FC2C603}`, version 1.0, LCID 0. The external candidate is byte-identical to the supplied XP SP3 ISO copy and verifies against Microsoft-signed `SP3.CAT` and `NT5.CAT`. | Accepted external binary/type-library input. SHA-256 `19149F082F3CA68AA893ADAF0309E5E6C8EA8710C0FE2040F95E8DA5A329F846`; never tracked or globally registered. |
 | `QuartzTypeLib` / DirectShow | Required GUID `{56A868B0-0AD4-11CE-B03A-0020AF0BA770}`, version 1.0, LCID 0. The type library is registered locally and `quartz.dll` is present in the Windows system directories. | Accepted Windows COM prerequisite. |
 | Windows APIs used by the native alpha DLL | Its import table contains only `KERNEL32`, `USER32`, `ADVAPI32`, `ole32`, `OLEAUT32`, and `SHLWAPI`; it has no separate Visual C++ runtime import. | Accepted operating-system prerequisite. |
 | `xcopy.exe` | The historical `copyresources.bat` uses it to construct the package and it is present as a Windows component. | Accepted for the preservation build; Phase 1B may wrap the copy operation noninteractively without changing package contents. |
@@ -54,7 +54,7 @@ The result is:
 |---|---|---|
 | `extlib/MagicLibrary.DLL` | `MagicLibrary, Version=1.7.4.0`; `1E2320AD596B1E2AB0600DE07691289B361E48BD9A2ACBBF375FD58EF0D9569E` | Critical UI prerequisite. Preserve unchanged; licensing remains an explicit later audit. |
 | `extlib/SharpZipLib.dll` | `SharpZipLib, Version=0.5.0.0`; `BD895385DBF9C920D1DE1B5956ED4F677F1BDEAEC75259232518FF25CDFD38D6` | Critical save/package compatibility prerequisite. |
-| `extlib/MsHtmlHost.dll` | `MsHtmlHost, Version=0.0.0.0`; `736848E24F43BC0D6CE5AEEB71FEDB640B2964748987A73955B0E4CDEA5DA82C` | Critical `FreeTrain.Controls` compile/runtime prerequisite; project reference wiring is still required. |
+| `extlib/MsHtmlHost.dll` | `MsHtmlHost, Version=0.0.0.0`; `736848E24F43BC0D6CE5AEEB71FEDB640B2964748987A73955B0E4CDEA5DA82C` | Critical `FreeTrain.Controls` compile/runtime prerequisite; Phase 1 now wires it through a repository-local reference without changing control source. |
 | `extlib/SHDocVw.dll` | `SHDocVw, Version=1.1.0.0`; `E58C08E7E8BF6C5CEA961622346785DC2EFB1A47DB033096C56FE65852E6D99A` | Explicit `FreeTrain.Core` reference. No source call was found, but it remains a compile input until a later cleanup phase proves removal safe. |
 | `lib/DirectDraw.net/Interop.DirectDrawAlphaBlendLib.DLL` | `Interop.DirectDrawAlphaBlendLib, Version=1.0.0.0`; `8AED64C6D01444B95B419E544A01E7BD667D541B3715067D232C52ED5BA466B6` | Critical checked-in interop assembly. It references `Interop.DxVBLib, Version=1.0.0.0`. |
 | `bin/Debug/DirectDraw.AlphaBlend.dll` and `bin/Release/DirectDraw.AlphaBlend.dll` | Both are the same 401,408-byte Win32 binary with SHA-256 `B8153302A76F3768528453D18C9025A5017B0B5EA2350F9B3F57A8A2B37F165D`. | Accepted pinned native preservation binary; detailed verification follows. |
@@ -76,7 +76,7 @@ The managed files above and the alpha DLL are not Authenticode-signed in this sn
 
 MSBuild's wrapper naming rule is `Interop.<type-library-name>.dll`, so the expected compile artifact is `Interop.DxVBLibA.dll`, with source namespace `DxVBLibA`. `AssemblyInfo.cs` describes `DirectAudio.net` as a “DirectMusic/DirectSound/DirectShow wrapper for .NET.” The required GUID differs only in its final digit from the checked-in DirectX 7 Visual Basic type library GUID `{E1211242-8E94-11D1-8808-00C04FC2C602}`. Together with the use of `DirectX8Class`, this is strong repository evidence that the missing input is the Microsoft DirectX 8 Visual Basic audio/DirectMusic type library. The adjacent GUID is corroborating evidence, not a substitute for binary provenance.
 
-The immutable `pristine/r389` tree, every local Git object, and the current working tree contain neither `dx8vb.dll` nor `Interop.DxVBLibA.dll`. No local history supplies a hash, file version, signer, redistributable package name, or license for the missing binary. Those facts cannot be reconstructed from this repository and must remain unknown until a candidate is provided from an approved source.
+The immutable `pristine/r389` tree and local Git history contain neither `dx8vb.dll` nor `Interop.DxVBLibA.dll`; that archaeological finding remains unchanged. The later external input was extracted from the supplied XP SP3 ISO member `I386\DX8VB.DL_`. The expanded 1,227,264-byte Microsoft file is version `5.03.2600.5512 (xpsp.080413-0845)`, has SHA-256 `19149F082F3CA68AA893ADAF0309E5E6C8EA8710C0FE2040F95E8DA5A329F846`, and is authenticated by the ISO's Microsoft-signed catalogs. The byte-identical `dx8vb.zip` candidate is ignored and remains outside the repository.
 
 ### Source-named types that must exist
 
@@ -104,17 +104,17 @@ The minimum member surface observed at compile sites is:
 | `DirectMusicSegment8` | `SetStandardMidiFile()`, `GetLength()`, `Download(...)`, `Unload(...)`, `Clone(0, 0)`, `GetRepeats()`, `SetRepeats(...)`, and `GetAudioPathConfig()` |
 | `DirectMusicAudioPath8` and `DirectMusicSegmentState8` | Returned/stored COM interface types released or queried by the wrapper |
 
-This is an exact list of source-observed names and calls, not a claim that the full type library contains only these members. Some parameter types are present only transitively in COM method metadata because the source passes their values directly or passes `null`. Their exact names, GUIDs, marshaling attributes, enum numeric values, and assembly metadata cannot be proven until the actual type library or a provenance-known generated interop assembly is inspected.
+This is an exact list of source-observed names and calls, not a claim that the full type library contains only these members. The accepted typelib and generated assembly expose all listed types and members. The full library contains 483 types; the required enum values are `DMUS_AUDIOF_ALL = 63`, `DMUS_APATH_DYNAMIC_STEREO = 8`, and `DMUS_SEGF_SECONDARY = 128`.
 
 ### Candidate acceptance test
 
-A future candidate is acceptable only if all of the following hold before it enters the build:
+The supplied candidate passed the following acceptance test before entering the build:
 
 1. Record origin, filename, byte length, SHA-256, file/product version, architecture, signature status, and redistribution basis.
 2. Load its type library without registering it and verify GUID `{E1211242-8E94-11D1-8808-00C04FC2C603}`, version 1.0, and LCID 0.
 3. Generate or inspect `Interop.DxVBLibA.dll` and verify every source-named type and member above.
-4. Verify the x86 runtime can activate `DirectX8Class`; an interop DLL alone is insufficient for the runnable baseline.
-5. Build `DirectAudio.net` without stubbing or disabling audio.
+4. A 32-bit, no-registration class-factory probe loaded the DLL and created `DirectX8Class` successfully.
+5. `DirectAudio.net` and the complete solution project graph built without stubbing or disabling audio.
 
 The checked-in `dx7vb.dll` fails this acceptance test: its generated wrapper contains `DirectX7Class` and no `DirectX8Class`.
 
@@ -178,10 +178,10 @@ Limits of this decision:
 | Standalone .NET Framework 2.0 SDK and `SDKInstallRootv2.0` | The exact trace above proves the property is not consumed by this build. |
 | VCBuild/Visual C++ 7.1 or 8.0, ATL, and MIDL for `DirectDraw.AlphaBlend` | The verified native DLL is accepted for the preservation baseline and the native project is outside the managed solution. These tools become relevant only to a later native-from-source gate. |
 | `DirectDraw.AlphaBlendPS.vcproj` | No proxy/stub binary is used by the checked runnable layout; the in-process automation interface works through the main DLL. |
-| `lib/DirectShow.VideoRecorder`, `lib/DirectShow.TypeLib`, `plugins/org.kohsuke.freetrain.tools.vcr`, and their `.lib`/interop files | The recorder/VCR path is not in `FreeTrain_VS2008.sln` and was already excluded from the critical path. |
+| `lib/DirectShow.VideoRecorder`, `lib/DirectShow.TypeLib`, `plugins/org.kohsuke.freetrain.tools.vcr`, and their `.lib`/interop files | VCR was historically distributed, but it is runtime-optional and absent from `FreeTrain_VS2008.sln`. Preserve all source, generated-input evidence, and official reference binaries. Reconstruct its auxiliary VC++/MIDL/TlbImp/IL toolchain independently if provenance-known historical tools become available; do not block the core build or modernization on that work. |
 | `NeoFT`, `experiments`, and their `AxSHDocVw.dll` dependency | Separate historical branches/experiments, not the r389 runnable package. |
 | Developer utilities (`ColorDiff`, `GUIDGen`, `PicturePreviewer`, `TrainListBuilder`, `XmlCombiner`, and `MapConstructionDriver`) | Useful auxiliary programs, but not dependencies of `FreeTrain.exe` or its standard plugin package. |
 
 ## Phase 1A gate
 
-Phase 1A stops here. Phase 1B must not begin until a provenance-known `DxVBLibA` candidate is supplied and passes the acceptance test. No historical SDK or runtime should be downloaded or installed as part of this classification pass.
+The original Phase 1A stop condition is resolved: the provenance-known `DxVBLibA` candidate passed the acceptance test without downloading or installing a historical SDK/runtime. Phase 1B's reproducible build/package work is complete; controlled runtime smoke validation remains separate.

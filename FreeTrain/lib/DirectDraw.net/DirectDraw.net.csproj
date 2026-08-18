@@ -110,7 +110,12 @@
     <Reference Include="System.Xml">
       <Name>System.XML</Name>
     </Reference>
-    <COMReference Include="DxVBLib">
+    <Reference Include="Interop.DxVBLib" Condition=" '$(LegacyInteropPath)' != '' ">
+      <Name>Interop.DxVBLib</Name>
+      <HintPath>$(LegacyInteropPath)\Interop.DxVBLib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <COMReference Include="DxVBLib" Condition=" '$(LegacyInteropPath)' == '' ">
       <Guid>{E1211242-8E94-11D1-8808-00C04FC2C602}</Guid>
       <VersionMajor>1</VersionMajor>
       <VersionMinor>0</VersionMinor>

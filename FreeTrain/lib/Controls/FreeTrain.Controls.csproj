@@ -91,6 +91,11 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MsHtmlHost">
+      <Name>MsHtmlHost</Name>
+      <HintPath>..\..\extlib\MsHtmlHost.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System">
       <Name>System</Name>
     </Reference>

@@ -126,14 +126,24 @@
     <Reference Include="System.Xml">
       <Name>System.XML</Name>
     </Reference>
-    <COMReference Include="DxVBLibA">
+    <Reference Include="Interop.DxVBLibA" Condition=" '$(LegacyInteropPath)' != '' ">
+      <Name>Interop.DxVBLibA</Name>
+      <HintPath>$(LegacyInteropPath)\Interop.DxVBLibA.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Interop.QuartzTypeLib" Condition=" '$(LegacyInteropPath)' != '' ">
+      <Name>Interop.QuartzTypeLib</Name>
+      <HintPath>$(LegacyInteropPath)\Interop.QuartzTypeLib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <COMReference Include="DxVBLibA" Condition=" '$(LegacyInteropPath)' == '' ">
       <Guid>{E1211242-8E94-11D1-8808-00C04FC2C603}</Guid>
       <VersionMajor>1</VersionMajor>
       <VersionMinor>0</VersionMinor>
       <Lcid>0</Lcid>
       <WrapperTool>tlbimp</WrapperTool>
     </COMReference>
-    <COMReference Include="QuartzTypeLib">
+    <COMReference Include="QuartzTypeLib" Condition=" '$(LegacyInteropPath)' == '' ">
       <Guid>{56A868B0-0AD4-11CE-B03A-0020AF0BA770}</Guid>
       <VersionMajor>1</VersionMajor>
       <VersionMinor>0</VersionMinor>
