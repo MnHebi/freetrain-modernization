@@ -34,7 +34,9 @@ The generated `DxVBLibA` assembly is `Interop.DxVBLibA, Version=1.0.0.0`, uses n
 
 The apparent solution configuration `Debug|x86` is not a complete build configuration: it has a `Build.0` entry only for `DirectAudio.net`. The complete historical graph is `Debug|Any CPU`; its principal projects already specify x86, and the wrapper pins `PlatformTarget=x86` globally.
 
-Loading the solution file directly is impossible on this host because MSBuild's old solution wrapper enumerates a malformed machine-wide ToolsVersion 14.0 registry entry. The wrapper therefore parses the same 33 C# solution entries, orders them topologically by their `ProjectReference` edges, and invokes each project serially with the 3.5 toolset and `BuildProjectReferences=false`. It supplies `SolutionDir`, disables only the interactive post-build commands, and reproduces `copyresources.bat` noninteractively after compilation.
+During the recorded 2026-08-17 build, loading the solution file directly failed because MSBuild's old solution wrapper enumerated a malformed machine-wide ToolsVersion 14.0 registry entry. The wrapper therefore parsed the same 33 C# solution entries, ordered them topologically by their `ProjectReference` edges, and invoked each project serially with the 3.5 toolset and `BuildProjectReferences=false`. It supplied `SolutionDir`, disabled only the interactive post-build commands, and reproduced `copyresources.bat` noninteractively after compilation.
+
+On 2026-08-18 the stale registry entry was removed outside the repository. A fresh preflight selected `C:\Windows\Microsoft.NET\Framework\v3.5\MSBuild.exe`, both the 3.5 and 4.x probes succeeded, and `FreeTrain_VS2008.sln` passed `ValidateSolutionConfiguration`. This resolves the current host complaint without erasing the original diagnostic evidence. The wrapper retains deterministic direct-project traversal because it supplies explicit x86 properties, stable ordering, and per-project error classification independently of solution-wrapper state.
 
 The historical `COMReference` items remain in their project files for the default Visual Studio path. When `LegacyInteropPath` is supplied by the wrapper, conditional ordinary references consume the generated assemblies instead. `FreeTrain.Controls` also receives the already-inventoried repository-local reference to `extlib/MsHtmlHost.dll`. No C# source or subsystem implementation changed, and `FreeTrain.Core` remains a library.
 
@@ -44,8 +46,8 @@ Two diagnostic attempts failed before the successful traversal. They have the sa
 
 | Attempt/error | Classification | Disposition |
 |---|---|---|
-| .NET 3.5 `MSBuild.exe`: `MSB4141`, empty `MSBuildToolsPath` for registry ToolsVersion 14.0 | Environmental | Host rejected even a minimal project. No machine registry repair was attempted. |
-| .NET 4.x `MSBuild.exe` loading `FreeTrain_VS2008.sln`: `MSB1025` followed by `InvalidToolsetDefinitionException` for the same registry entry | Environmental | MSBuild emitted the error twice while unwinding one failed solution load. Replaced by deterministic direct-project traversal. |
+| .NET 3.5 `MSBuild.exe`: `MSB4141`, empty `MSBuildToolsPath` for registry ToolsVersion 14.0 | Environmental | The original host rejected even a minimal project. The stale registry entry was removed externally after this run; the 3.5 probe now succeeds. |
+| .NET 4.x `MSBuild.exe` loading `FreeTrain_VS2008.sln`: `MSB1025` followed by `InvalidToolsetDefinitionException` for the same registry entry | Environmental | MSBuild emitted the error twice while unwinding one failed solution load. The environment is now repaired; deterministic direct-project traversal remains the documented build path. |
 
 The successful 33-project traversal recorded:
 

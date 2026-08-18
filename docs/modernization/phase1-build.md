@@ -12,11 +12,11 @@ The historically distributed Video Recorder plug-in is an auxiliary preservation
 
 ### MSBuild hosts
 
-- `C:\Windows\Microsoft.NET\Framework\v3.5\MSBuild.exe` exists but fails before project evaluation with MSB4141 because the machine has an invalid MSBuild ToolsVersion 14.0 registry entry with no `MSBuildToolsPath`.
-- `C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe` can evaluate the projects with `/toolsversion:3.5`.
+- `C:\Windows\Microsoft.NET\Framework\v3.5\MSBuild.exe` and `C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe` are both currently usable; the preflight selects the native 3.5 host first.
+- The original Phase 1 diagnostic run encountered MSB4141 because a stale machine-wide ToolsVersion 14.0 registry entry had no `MSBuildToolsPath`. That external registry entry has since been removed, and `FreeTrain_VS2008.sln` now passes `ValidateSolutionConfiguration` under the 3.5 host. The original error remains recorded in `phase1-build-report.md` as historical build evidence.
 - The .NET 2.0 MSBuild host can start. Its `GetFrameworkPaths` target reports a missing .NET Framework 2.0 SDK, but the target succeeds and no FreeTrain build target consumes the resulting SDK-directory property. Direct project invocation still cannot reproduce solution-relative post-build behavior by itself.
 
-The repository must not repair machine-wide registry state. The build wrapper should select a working host explicitly.
+The repository does not edit machine-wide registry state. The build wrapper probes the available classic hosts and selects a working host explicitly.
 
 The standalone .NET Framework 2.0 SDK has been removed from the blocker list. `phase1a-dependency-classification.md` records the exact task/target/property trace and proves that COM-wrapper generation uses the in-process `TypeLibConverter` rather than SDK `TlbImp.exe`.
 
