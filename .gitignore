@@ -13,6 +13,7 @@
 # tracked by pristine/r389 remain tracked despite these patterns.
 **/obj/
 **/bin/
+*.sln.cache
 /FreeTrain/core/Debug/
 /FreeTrain/core/Release/
 /FreeTrain/plugins/jp.co.tripod.chiname.lib/*.dll
