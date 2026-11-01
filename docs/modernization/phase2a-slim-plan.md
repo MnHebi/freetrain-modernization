@@ -70,6 +70,48 @@ Still open: assertions for `bltShape`, `bltHueTransform`, and night darkening be
 - Record in a single `environment.json`: XP build, CLR version, `dx8vb.dll` / `ddraw.dll` versions and hashes, display mode, VirtualBox version and graphics controller. Nothing per-file.
 - Commit dumps. These become CI vectors for the managed backend.
 
+**Tooling (2026-11-01).** `eng/xp-primitive-dump/XpPrimitiveDump.cs` is the dump program. It compiles on the host and has not yet run against DirectDraw. `fixtures/xp-primitive-dumps/README.md` documents its 50-case list and output format.
+
+- `xp-primitive-dump.ps1 -Action Build` compiles it with the .NET Framework 3.5 `csc.exe` as an x86, CLR 2 (`v2.0.50727`) executable. It then runs `XpPrimitiveDump list`, which touches no DirectDraw type.
+- `-Action Stage` builds the transfer ISO `.artifacts\xp-primitive-dump\xp-primitive-dump-kit.iso`. The ISO holds `tool\`, plus `reconstructed\` and `official\`, each with `DirectDraw.net.dll`, `Interop.DxVBLib.dll`, `Interop.DirectDrawAlphaBlendLib.dll`, and `DirectDraw.AlphaBlend.dll`. The official files come from the pinned `FreeTrain20070604.zip`, and the ISO carries a `SHA256SUMS.txt`.
+- The program loads the given package's assemblies by path. It checks the pinned `DirectDraw.AlphaBlend.dll` hash and calls its `DllRegisterServer`, as `tools/Driver/Driver.cs` does, because `Surface` activates `AlphaBlenderClass` statically.
+- It creates surfaces with `createOffscreenSurface` (system memory) and runs the cases through the public facade. It reads results through a full-surface lock.
+- A DirectDraw error is recorded as data. A harness failure gives a nonzero exit. These count as harness failures: an exception outside the operation, any of the 11 control cases failing (no error and a visible change required), and an environment that differs from the one already recorded in the output root.
+- Output goes to `<mode>.partial` and is renamed to `<mode>` only when the run is clean, so a failed run never blocks a retry. The program refuses to overwrite a finished dump.
+- `fixtures/xp-primitive-dumps/cases.txt` pins the case list. `Verify` and `Check` reject any dump that lacks a case, and `Verify` also requires 32-bit dumps for both packages, matching mode sets, and a complete `environment.json`.
+
+**Runbook.** Do this once, in one VM session. Commands in the guest run in `cmd.exe` as the local administrator, because `DllRegisterServer` writes `HKCR`.
+
+1. **Host: stage.** Build the reconstructed package if needed (`eng\legacy-build.ps1`), then run `.\eng\xp-primitive-dump\xp-primitive-dump.ps1 -Action Stage`. Keep the ISO SHA-256 it prints.
+2. **Host: export disk.** Create the disk with `VBoxManage createmedium disk --filename <dir>\xp-dump-export.vhd --size 64 --format VHD --variant Fixed`. With the VM powered off and restored to snapshot `xp-sp3-clr2` (`phase1d-runtime-validation.md`), attach this disk as a second hard disk and the kit ISO as the optical drive. Leave the network disconnected. Use the 1024 x 768, 32-bit desktop, from the hypervisor console, not RDP.
+3. **Guest: prepare.** In `diskmgmt.msc`, initialize the new disk and format it as one FAT32 volume, assumed `E:`. Assume the ISO is `D:`. Then:
+   ```bat
+   xcopy D:\ C:\FTVM\xpdump\ /E /I /H /K
+   cd /d C:\FTVM\xpdump
+   fc /b D:\tool\*.* tool\*.*
+   fc /b D:\reconstructed\*.* reconstructed\*.*
+   fc /b D:\official\*.* official\*.*
+   ```
+   Every `fc` must report no differences.
+4. **Guest: 32-bit runs.** Replace `<vbox>` with the host's VirtualBox version and `<controller>` with the VM's graphics controller, for example `VBoxVGA`. Each command must end with `0 harness failures`. Lines naming a case with an HRESULT are recorded DirectDraw behavior. On `HARNESS FAIL`, the program leaves only `<mode>.partial`. Copy that directory out for diagnosis (step 6) and stop; do not commit anything from that session.
+   ```bat
+   tool\XpPrimitiveDump.exe dump reconstructed out reconstructed --vbox <vbox> --graphics <controller>
+   tool\XpPrimitiveDump.exe dump official out official --vbox <vbox> --graphics <controller>
+   tool\XpPrimitiveDump.exe dump reconstructed repeat reconstructed --vbox <vbox> --graphics <controller>
+   ```
+5. **Guest: 16-bit runs.** Open Display Properties > Settings and set Color quality to Medium (16 bit). Repeat the three commands from step 4 unchanged; they write `565` (or `555`) directories next to `32`. If 16-bit is not offered, note this in the commit message and skip the step.
+6. **Guest: export.** Run `xcopy C:\FTVM\xpdump\out E:\out\ /E /I` and `xcopy C:\FTVM\xpdump\repeat E:\repeat\ /E /I`. Shut the guest down. Detach the export disk, then restore `xp-sp3-clr2` so the registration and files are discarded.
+7. **Host: import and check.** From an elevated PowerShell (mounting a VHD needs administrator rights), mount the disk read-only with `Mount-DiskImage -ImagePath <dir>\xp-dump-export.vhd -Access ReadOnly`. Copy `out\*` to `fixtures\xp-primitive-dumps\` and `repeat\` to `.artifacts\xp-primitive-dump\repeat\`, then dismount. Run:
+   ```powershell
+   .\eng\xp-primitive-dump\xp-primitive-dump.ps1 -Action Verify
+   .\eng\xp-primitive-dump\xp-primitive-dump.ps1 -Action Check -Path fixtures\xp-primitive-dumps\reconstructed -OtherPath .artifacts\xp-primitive-dump\repeat\reconstructed
+   .\eng\xp-primitive-dump\xp-primitive-dump.ps1 -Action Check -Path fixtures\xp-primitive-dumps\reconstructed -OtherPath fixtures\xp-primitive-dumps\official
+   ```
+   The first two must pass. The second shows that the capture reproduces. The third is runtime evidence for item 4: a pass means both `DirectDraw.net.dll` builds behave identically on these cases. Record any difference it lists in the item 4 table; do not edit dumps to remove it.
+8. **Host: commit** `fixtures/xp-primitive-dumps/` (dumps and `environment.json`) in one commit. Put the kit ISO SHA-256 and the output of step 7 in the commit message.
+
+After the dumps are committed, `-Action Check -OtherPath <tree>` checks any later run, and `-Action Verify` can run in CI.
+
 ### 3. Code-derived tests
 
 Coordinate conversion, voxel traversal, and season/night resource selection (`Picture.cs`, `ResourceUtil.cs`, `MountainVoxel.cs`, `Time.cs`) are pure logic. Write characterization tests against the existing code directly. No oracle captures required.
