@@ -2,12 +2,18 @@
 param(
     [ValidateSet('Check', 'Write')]
     [string]$Action = 'Check',
-    [string]$PackageRoot = (Join-Path $PSScriptRoot '..\..\.artifacts\legacy-build\current\package\Debug'),
-    [string]$GoldenRoot = (Join-Path $PSScriptRoot '..\..\fixtures\code-derived'),
-    [string]$BuildRoot = (Join-Path $PSScriptRoot '..\..\.artifacts\code-derived')
+    [string]$PackageRoot,
+    [string]$GoldenRoot,
+    [string]$BuildRoot
 )
 
 $ErrorActionPreference = 'Stop'
+# Defaults are resolved here: Windows PowerShell 5.1 leaves $PSScriptRoot empty in
+# param-block defaults when the script is started with powershell.exe -File.
+$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $PackageRoot) { $PackageRoot = Join-Path $here '..\..\.artifacts\legacy-build\current\package\Debug' }
+if (-not $GoldenRoot) { $GoldenRoot = Join-Path $here '..\..\fixtures\code-derived' }
+if (-not $BuildRoot) { $BuildRoot = Join-Path $here '..\..\.artifacts\code-derived' }
 $PackageRoot = (Resolve-Path $PackageRoot).Path
 $core = Join-Path $PackageRoot 'FreeTrain.Core.dll'
 # The harness compares this hash with fixtures/code-derived/provenance.txt.
@@ -21,9 +27,9 @@ $references = 'FreeTrain.Core.dll', 'DirectDraw.net.dll', 'Interop.DxVBLib.dll' 
 & $csc /nologo /platform:x86 /target:exe /debug+ "/out:$exe" `
     /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Xml.dll `
     $references `
-    (Join-Path $PSScriptRoot 'CodeDerivedTests.cs') `
-    (Join-Path $PSScriptRoot 'IlTransplant.cs') `
-    (Join-Path $PSScriptRoot 'Tests.cs')
+    (Join-Path $here 'CodeDerivedTests.cs') `
+    (Join-Path $here 'IlTransplant.cs') `
+    (Join-Path $here 'Tests.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Test compilation failed.' }
 
 # Package assemblies are resolved from $PackageRoot at run time, not copied.
