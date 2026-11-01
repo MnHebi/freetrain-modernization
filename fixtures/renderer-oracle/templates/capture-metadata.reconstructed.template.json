@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "approvalStatus": "candidate",
+  "fixtureId": "replace-with-fixture-id",
+  "captureId": "replace-with-capture-id",
+  "runKind": "primary",
+  "oracleId": "reconstructed-legacy",
+  "rendererOracle": "captured-reconstructed-legacy",
+  "originatingSave": "saves/replace-with-fixture-id.ftgd",
+  "saveSha256": "replace-with-lowercase-sha256",
+  "freeTrainRevision": "r389",
+  "package": {
+    "kind": "reconstructed-legacy",
+    "gitCommit": "replace-with-40-character-git-commit",
+    "preservationBuildIdentifier": "replace-with-phase1-build-identifier",
+    "packageManifestSha256": "replace-with-lowercase-sha256",
+    "executableSha256": "6449145b79d4f7d2b287ae8a9f7465bfb5c418c58903dfd847ef6530fe423c15",
+    "relevantPayloads": []
+  },
+  "environment": {
+    "equivalenceGroupId": "xp-sp3-vbox-renderer-pair-v1",
+    "identifier": "xp-sp3-reconstructed-legacy-oracle-v1",
+    "vmRole": "reconstructed-legacy",
+    "referenceStateIdentifier": "replace-with-base-snapshot-or-export-identifier",
+    "networkDisconnected": true,
+    "guestOs": {
+      "product": "Windows XP Professional",
+      "version": "5.1.2600",
+      "servicePack": "SP3",
+      "architecture": "x86"
+    },
+    "clrDotNetVersions": [
+      "replace-with-installed-clr-and-framework-version"
+    ],
+    "directXRuntime": {
+      "version": "replace-with-directx-runtime-version",
+      "dx8vbDllVersion": "replace-with-dx8vb-file-version",
+      "dx8vbDllSha256": "replace-with-lowercase-sha256"
+    },
+    "hypervisor": {
+      "product": "Oracle VM VirtualBox",
+      "version": "replace-with-virtualbox-version",
+      "graphicsController": "replace-with-controller-for-example-vboxvga",
+      "videoMemoryMiB": 0,
+      "acceleration3d": false,
+      "guestDisplayDriver": {
+        "name": "replace-with-driver-name",
+        "version": "replace-with-driver-version"
+      },
+      "guestAdditions": {
+        "present": false,
+        "version": "not-installed"
+      }
+    },
+    "display": {
+      "width": 1024,
+      "height": 768,
+      "colorDepthBits": 32,
+      "dpi": 96,
+      "scaling": "none"
+    },
+    "desktop": {
+      "theme": "Windows Classic",
+      "wallpaper": "none",
+      "fontSmoothing": "replace-with-recorded-setting"
+    }
+  },
+  "state": {
+    "clockDisplay": "replace-with-exact-status-bar-text",
+    "clockPaused": true,
+    "dayNight": "always-day",
+    "season": "spring",
+    "weather": "none",
+    "heightCut": "none",
+    "controller": "none",
+    "overlays": [],
+    "stationNames": "off",
+    "viewport": {
+      "mapWindowState": "main-and-map-maximized",
+      "scrollX": 0,
+      "scrollY": 0,
+      "mapClientRegion": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      }
+    },
+    "cameraRotation": "none"
+  },
+  "interaction": {
+    "mode": "parked",
+    "coordinateSpace": "full-screen-png",
+    "points": [
+      {
+        "role": "pointer",
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "cursorDisposition": "outside-deterministic-regions",
+    "notes": "Use the exact coordinates recorded for the official-release counterpart."
+  },
+  "capture": {
+    "mechanism": "hypervisor-console",
+    "screenshot": "screenshots/reconstructed-legacy/primary/replace-with-capture-id.png",
+    "screenshotSha256": "replace-with-lowercase-sha256",
+    "format": "png",
+    "lossless": true
+  },
+  "comparison": {
+    "deterministicRegions": [
+      {
+        "regionId": "map-client-exact",
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1,
+        "purpose": "Use the exact region recorded for the official-release counterpart."
+      }
+    ],
+    "gdiFontRegions": [],
+    "pointerCursorRegions": [],
+    "maskArtifacts": []
+  },
+  "provenanceNotes": "Source-reconstructed r389 capture using the same save bytes and interaction state as the official-release counterpart."
+}

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "approvalStatus": "candidate",
+  "fixtureId": "replace-with-fixture-id",
+  "captureId": "replace-with-capture-id",
+  "officialPrimaryMetadata": "metadata/official-release/primary/replace-with-capture-id.json",
+  "reconstructedPrimaryMetadata": "metadata/reconstructed-legacy/primary/replace-with-capture-id.json",
+  "sharedSaveSha256": "replace-with-lowercase-sha256",
+  "environmentEquivalence": {
+    "result": "exact-recorded-match",
+    "comparedFields": [
+      "guestOs",
+      "clrDotNetVersions",
+      "directXRuntime",
+      "hypervisor",
+      "display",
+      "desktop"
+    ],
+    "notes": "Confirm all rendering-relevant fields match; package identity and VM role are intentionally different."
+  },
+  "deterministicRegions": [
+    {
+      "regionId": "map-client-exact",
+      "result": "exact-match",
+      "differentPixelCount": 0,
+      "classification": "exact-match",
+      "notes": "Exact pixel comparison of the identically named region in both primary captures."
+    }
+  ],
+  "gdiFontReview": [],
+  "differences": [],
+  "unexplainedDifferenceCount": 0,
+  "cleanSnapshotReproduction": {
+    "required": false,
+    "officialMetadata": null,
+    "officialResult": "not-required",
+    "reconstructedMetadata": null,
+    "reconstructedResult": "not-required"
+  },
+  "comparisonMethod": "replace-with-exact-pixel-tool-and-version-plus-manual-gdi-review-procedure",
+  "reviewer": "replace-with-reviewer",
+  "notes": "The official release is authoritative evidence of shipped behavior; any mismatch must remain classified."
+}

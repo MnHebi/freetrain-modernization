@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 2,
+  "fixtureSet": "phase2a-paired-legacy-oracles",
+  "oraclePolicy": {
+    "officialRelease": {
+      "oracleId": "official-release",
+      "rendererOracle": "captured-official-release",
+      "precedence": 1,
+      "archiveFilename": "FreeTrain20070604.zip",
+      "archiveSha256": "70374a836a9f1bc28b16dd65c323fc1b21b4142f10344d19335a65690c16c23d"
+    },
+    "reconstructedLegacy": {
+      "oracleId": "reconstructed-legacy",
+      "rendererOracle": "captured-reconstructed-legacy",
+      "precedence": 2,
+      "sourceRevision": "r389"
+    }
+  },
+  "capturePlan": {
+    "primaryMetadataPattern": "metadata/{oracleId}/primary/{captureId}.json",
+    "reproductionMetadataPattern": "metadata/{oracleId}/reproduction/{captureId}.json",
+    "comparisonMetadataPattern": "comparisons/{captureId}.json",
+    "cleanSnapshotReproductionCaptureIds": [
+      "terrain-day-none",
+      "terrain-night-none",
+      "transport-day-neutral",
+      "directional-day-neutral",
+      "season-winter-day"
+    ],
+    "interactionModes": {
+      "terrain-day-none": "parked",
+      "terrain-night-none": "parked",
+      "terrain-day-water-cut": "parked",
+      "terrain-day-underground-cut": "parked",
+      "transport-day-neutral": "parked",
+      "transport-day-labels": "parked",
+      "transport-preview-valid": "pointer-hover",
+      "transport-preview-clipped": "pointer-hover",
+      "transport-overlay-road": "click-move-preview",
+      "transport-overlay-rail": "click-move-preview",
+      "transport-restored-full": "parked",
+      "directional-day-neutral": "parked",
+      "season-spring-day": "parked",
+      "season-summer-day": "parked",
+      "season-autumn-day": "parked",
+      "season-winter-day": "parked"
+    },
+    "directionalAlternative": {
+      "mode": "single",
+      "adequacyDecision": "pending",
+      "singleCaptureId": "directional-day-neutral",
+      "splitCaptureIds": [
+        "directional-north-day-neutral",
+        "directional-south-day-neutral",
+        "directional-east-day-neutral",
+        "directional-west-day-neutral"
+      ]
+    }
+  },
+  "camera": {
+    "projection": "fixed-quarter-view",
+    "rotation": "none",
+    "directionalCoverage": "north-south-east-west-content"
+  },
+  "plannedEnvironment": {
+    "guest": "Windows XP SP3 x86",
+    "hypervisorProduct": "Oracle VM VirtualBox",
+    "displayWidth": 1024,
+    "displayHeight": 768,
+    "colorDepthBits": 32,
+    "dpi": 96,
+    "captureMechanism": "hypervisor-console",
+    "requiredEquivalence": [
+      "guest-os-and-service-pack",
+      "clr-and-dotnet-versions",
+      "directx-runtime-and-dx8vb-binary",
+      "virtualbox-version",
+      "graphics-controller",
+      "video-memory",
+      "3d-acceleration",
+      "guest-display-driver",
+      "guest-additions",
+      "display-mode",
+      "desktop-theme"
+    ]
+  },
+  "fixtures": [
+    {
+      "fixtureId": "terrain-elevation-water-v1",
+      "status": "planned",
+      "provenance": "manual-xp",
+      "originatingSave": "saves/terrain-elevation-water-v1.ftgd",
+      "coverage": [
+        "basic-terrain",
+        "elevation",
+        "slopes",
+        "water",
+        "day",
+        "night",
+        "water-level-cut",
+        "underground-cut"
+      ],
+      "captures": [
+        {
+          "captureId": "terrain-day-none",
+          "status": "planned"
+        },
+        {
+          "captureId": "terrain-night-none",
+          "status": "planned"
+        },
+        {
+          "captureId": "terrain-day-water-cut",
+          "status": "planned"
+        },
+        {
+          "captureId": "terrain-day-underground-cut",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "fixtureId": "transport-structures-v1",
+      "status": "planned",
+      "provenance": "manual-xp",
+      "originatingSave": "saves/transport-structures-v1.ftgd",
+      "coverage": [
+        "roads",
+        "rail",
+        "platforms",
+        "stations",
+        "trains",
+        "bridges",
+        "elevated-structures",
+        "multi-voxel-buildings",
+        "transparent-construction-preview",
+        "controller-overlays",
+        "station-labels-gdi",
+        "restored-full-redraw"
+      ],
+      "captures": [
+        {
+          "captureId": "transport-day-neutral",
+          "status": "planned"
+        },
+        {
+          "captureId": "transport-day-labels",
+          "status": "planned"
+        },
+        {
+          "captureId": "transport-preview-valid",
+          "status": "planned"
+        },
+        {
+          "captureId": "transport-preview-clipped",
+          "status": "planned"
+        },
+        {
+          "captureId": "transport-overlay-road",
+          "status": "planned"
+        },
+        {
+          "captureId": "transport-overlay-rail",
+          "status": "planned"
+        },
+        {
+          "captureId": "transport-restored-full",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "fixtureId": "directional-content-v1",
+      "status": "planned",
+      "provenance": "manual-xp",
+      "originatingSave": "saves/directional-content-v1.ftgd",
+      "coverage": [
+        "north-content",
+        "south-content",
+        "east-content",
+        "west-content",
+        "fixed-camera-draw-order"
+      ],
+      "captures": [
+        {
+          "captureId": "directional-day-neutral",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "fixtureId": "season-spring-v1",
+      "status": "planned",
+      "provenance": "manual-xp",
+      "originatingSave": "saves/season-spring-v1.ftgd",
+      "coverage": [
+        "spring",
+        "mountain-voxel-season-palette"
+      ],
+      "captures": [
+        {
+          "captureId": "season-spring-day",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "fixtureId": "season-summer-v1",
+      "status": "planned",
+      "provenance": "manual-xp-clock-advance",
+      "originatingSave": "saves/season-summer-v1.ftgd",
+      "coverage": [
+        "summer",
+        "mountain-voxel-season-palette"
+      ],
+      "captures": [
+        {
+          "captureId": "season-summer-day",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "fixtureId": "season-autumn-v1",
+      "status": "planned",
+      "provenance": "manual-xp-clock-advance",
+      "originatingSave": "saves/season-autumn-v1.ftgd",
+      "coverage": [
+        "autumn",
+        "mountain-voxel-season-palette"
+      ],
+      "captures": [
+        {
+          "captureId": "season-autumn-day",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "fixtureId": "season-winter-v1",
+      "status": "planned",
+      "provenance": "manual-xp-clock-advance",
+      "originatingSave": "saves/season-winter-v1.ftgd",
+      "coverage": [
+        "winter",
+        "mountain-voxel-season-palette",
+        "winter-ground-chip"
+      ],
+      "captures": [
+        {
+          "captureId": "season-winter-day",
+          "status": "planned"
+        }
+      ]
+    }
+  ],
+  "unsupportedStates": [
+    {
+      "state": "weather-other-than-none",
+      "reason": "r389 MapView selects NullWeatherOverlay; the sample WeatherOverlayImpl construction is commented out and there is no production controller or serialized state.",
+      "evidence": "FreeTrain/core/views/map/MapView.cs"
+    }
+  ]
+}

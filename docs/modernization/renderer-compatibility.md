@@ -62,18 +62,20 @@ No bundled plugin directly accesses the property. The migration should therefore
 
 ## Phase 2 oracle policy
 
-The legacy DirectDraw renderer is not required to run on the Windows 11 development machine or in normal CI. Acceptable evidence sources are:
+The legacy DirectDraw renderer is not required to run on the Windows 11 development machine or in normal CI. Acceptable evidence sources, in precedence order where they describe the same shipped world output, are:
 
-1. Legacy renderer capture in a compatible VM or historical machine
-2. Tests extracted from native pixel routines
-3. Deterministic vectors generated from the original C++ algorithms
-4. Known-good historical screenshots
-5. Manually reviewed reference images
-6. Static analysis of coordinate, clipping, and traversal code
+1. `captured-official-release`: the official SourceForge release in a compatible XP VM
+2. `captured-reconstructed-legacy`: the source-built r389 package, after exact comparison to the official release
+3. `native-vector`: tests/vectors extracted from the original native pixel routines
+4. `historical-reference`: known-good historical screenshots
+5. `manually-approved`: manually reviewed reference images
+6. `code-derived`: static analysis of coordinate, clipping, and traversal code
 
-Each fixture must record its origin as `captured-legacy`, `native-vector`, `historical-reference`, `manually-approved`, or `code-derived`.
+The unqualified `captured-legacy` value is deprecated for new evidence because it does not identify package authority.
 
-The functioning disposable XP SP3 x86 runtime is the active `captured-legacy` oracle for Phase 2. Renderer characterization is not gated on reconstructing the optional VCR auxiliary build: use lossless hypervisor screenshots and the documented fixture procedure, not the VCR plug-in. Preserve the VCR source and official binaries separately as historical evidence.
+Phase 2A uses two independently identified, rendering-equivalent XP SP3 x86 VMs. The official release is authoritative. The reconstruction becomes a secondary oracle only after every deterministic difference is exact or classified, no unexplained mismatch remains, and the clean-snapshot gate passes in both VMs. Renderer characterization is not gated on reconstructing VCR: use lossless VirtualBox screenshots and preserve VCR source/binaries separately.
+
+Phase 2A's concrete fixture catalog, metadata contract, immutable-evidence workflow, and XP operator checklist are in `phase2a-legacy-oracle.md` and `fixtures/renderer-oracle/`. Phase 2A only captures and validates the legacy oracle; executable behavioral tests remain Phase 2B work.
 
 ## Test taxonomy
 

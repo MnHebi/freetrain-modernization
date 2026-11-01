@@ -224,6 +224,8 @@ Close FreeTrain normally, verify `FreeTrain.exe.options` and `layout.config` wer
 
 ## Phase 2 fixture preparation
 
+This section is the provisional Phase 1D capture proposal and is retained as preservation chronology. The evidence-backed Phase 2A runbook in `phase2a-legacy-oracle.md` supersedes its provisional fixture names, capture IDs, repository layout, and metadata example. Follow Phase 2A for new captures; do not rename an already captured historical artifact merely to match the newer catalog.
+
 ### Fixture set
 
 Create fixtures through the unmodified XP application UI; do not synthesize them with a modern serializer.

@@ -60,3 +60,11 @@ The original source archive and official runtime release were supplied after the
 - `phase1d-runtime-validation.md` — disposable XP SP3 x86 runtime, COM, smoke-test, and Phase 2 capture runbook
 - `eng/legacy-build-preflight.ps1` — non-mutating toolchain and dependency preflight
 - `eng/legacy-build.ps1` — external-input verification, no-registration interop generation, serial x86 build, and packaging
+
+## Phase 2 documents
+
+- `phase2a-legacy-oracle.md` — paired official/reconstructed XP fixture matrix, interaction/graphics metadata, operator checklist, and Phase 2A exit gate
+- `phase2a-fixture-layouts.md` — coordinate-addressed ASCII construction plans for terrain, transport, directional, and seasonal saves
+- `renderer-compatibility.md` — renderer facade boundary, behavioral oracles, and the Phase 2 test taxonomy
+- `fixtures/renderer-oracle/` — planned fixture catalog, capture metadata schema, immutable-evidence layout, and approval manifest
+- `eng/renderer-oracle.ps1` — paired fixture/hash validation, PNG integrity and exact-region comparison, screenshot cataloguing, and deterministic manifest generation
