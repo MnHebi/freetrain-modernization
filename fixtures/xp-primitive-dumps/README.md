@@ -20,6 +20,7 @@ official/<mode>/<id>.bin
 
 | Field | Meaning |
 | --- | --- |
+| `control` | A control case; see below. |
 | `dst`, `src` | `[width, height, pitch]` of each surface. DirectDraw chooses the pitch. |
 | `args`, `points`, `seeds` | Inputs. Seeds drive `System.Random` for the seeded pixel pattern. |
 | `colorKey` | ARGB passed to `sourceColorKey`, whether it was set, and its packed value. |
@@ -45,7 +46,11 @@ Seeded surfaces use values restricted to the RGB masks. In a keyed pattern (blit
 
 ## Case list (50 per mode)
 
-Printed by `XpPrimitiveDump list`. The geometries are those of `eng/native-vectors/NativeVectorProbe.cs`. Because DirectDraw picks the pitch, `odd-width` takes the place of the probe's chosen padding.
+`cases.txt` is the committed case list, the output of `XpPrimitiveDump list`. `-Action Build` fails when the program's list drifts from it (`-WriteCaseList` accepts the change), and every dump must hold exactly these cases in this order.
+
+The 11 cases marked `control` use plain inputs any working DirectDraw handles. Each must return no error, and each must change destination pixels; for `hitTest-key`, at least one point must return `true`. (`createBitmap` and `createFromImage` controls need only return no error.) A control that fails makes the run a harness failure. That keeps a run in which every operation failed from passing as a characterization.
+
+A run with any harness failure writes only `<mode>.partial` for diagnosis and exits 1. A clean run renames that to `<mode>`. Every run into the same output root must see the same `environment.json`: a mismatch is a harness failure, and its facts go to `environment.mismatch.json`. So does omitting `--vbox` or `--graphics`. The geometries are those of `eng/native-vectors/NativeVectorProbe.cs`. Because DirectDraw picks the pitch, `odd-width` takes the place of the probe's chosen padding.
 
 | Geometry | dst | src | dest | source rect |
 | --- | --- | --- | --- | --- |
@@ -82,4 +87,7 @@ The `blt` overloads `blt(Point, src)` and `blt(Point, src, Rectangle)` share the
     -Path fixtures\xp-primitive-dumps\reconstructed -OtherPath fixtures\xp-primitive-dumps\official
 ```
 
-`Verify` checks each `index.json`, block sizes, SHA-256 values, and stray files. `Check` verifies both trees, then requires the same dumps, the same pixel format, and identical case records. Package hashes are allowed to differ. For each case that differs, it reports the first differing block and byte offset.
+Both actions check every dump: its case list against `cases.txt`, its directory name against its `pixelMode`, block sizes, SHA-256 values, stray files, and leftover `.partial` directories.
+
+- `Verify` is for this whole tree. It also requires `reconstructed\32` and `official\32`, the same set of modes for both packages, nothing else at the root, and an `environment.json`. That file must have every field filled in (operator fields not `unrecorded`), a CLR 2 version, and hashed `ddraw.dll`, `dx7vb.dll`, and `gdiplus.dll`.
+- `Check` then requires both trees to hold the same dumps, the same pixel format, and identical case records. Package hashes are allowed to differ. For each case that differs, it reports the first differing block and byte offset.

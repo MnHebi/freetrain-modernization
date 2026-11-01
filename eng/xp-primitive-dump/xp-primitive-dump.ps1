@@ -2,11 +2,15 @@
 param(
     # Build:  compile XpPrimitiveDump.exe (CLR 2, x86) and list its cases. Host-safe.
     # Stage:  Build, then write the read-only transfer ISO for the XP VM.
-    # Verify: check one dump tree's integrity (index, sizes, SHA-256, stray files).
-    # Check:  Verify two dump trees and require identical cases, e.g. committed
-    #         fixtures against a fresh VM run, or reconstructed against official.
+    # Verify: check the committed tree: every dump complete and intact, both
+    #         packages at 32-bit with the same modes, a recorded environment.json.
+    # Check:  require two dump trees (or subtrees) to hold the same complete
+    #         dumps with identical cases, e.g. committed fixtures against a fresh
+    #         VM run, or reconstructed against official.
     [ValidateSet('Build', 'Stage', 'Verify', 'Check')]
     [string]$Action = 'Build',
+    # Build only: accept a changed case list and rewrite cases.txt.
+    [switch]$WriteCaseList,
     [string]$PackageRoot = (Join-Path $PSScriptRoot '..\..\.artifacts\legacy-build\current\package\Debug'),
     [string]$OfficialArchive = (Join-Path $PSScriptRoot '..\..\FreeTrain20070604.zip'),
     [string]$BuildRoot = (Join-Path $PSScriptRoot '..\..\.artifacts\xp-primitive-dump'),
@@ -19,6 +23,18 @@ $BuildRoot = [IO.Path]::GetFullPath($BuildRoot)
 $alphaSha = 'B8153302A76F3768528453D18C9025A5017B0B5EA2350F9B3F57A8A2B37F165D'
 $officialSha = '70374A836A9F1BC28B16DD65C323FC1B21B4142F10344D19335A65690C16C23D'
 $kitFiles = 'DirectDraw.net.dll', 'Interop.DxVBLib.dll', 'Interop.DirectDrawAlphaBlendLib.dll', 'DirectDraw.AlphaBlend.dll'
+# `XpPrimitiveDump list` output: "<id> <op> [control]" per line. Every dump must
+# hold exactly these cases, in this order.
+$caseListPath = Join-Path $PSScriptRoot '..\..\fixtures\xp-primitive-dumps\cases.txt'
+$packages = 'reconstructed', 'official'
+
+function Read-CaseList {
+    if (-not (Test-Path $caseListPath)) { throw "Missing $caseListPath." }
+    foreach ($line in [IO.File]::ReadAllLines($caseListPath)) {
+        $f = -split $line
+        if ($f.Count -gt 0) { [pscustomobject]@{ Id = $f[0]; Op = $f[1]; Control = ($f.Count -gt 2 -and $f[2] -eq 'control') } }
+    }
+}
 
 function Invoke-Build {
     $pkg = (Resolve-Path $PackageRoot).Path
@@ -38,9 +54,15 @@ function Invoke-Build {
     if ($LASTEXITCODE -ne 0) { throw 'XpPrimitiveDump compilation failed.' }
     Copy-Item (Join-Path $PSScriptRoot 'XpPrimitiveDump.exe.config') "$exe.config" -Force
     # `list` touches no DirectDraw type; it proves the binary starts on CLR 2.
-    $cases = & $exe list
+    $cases = @(& $exe list | ForEach-Object { $_.TrimEnd() })
     if ($LASTEXITCODE -ne 0) { throw 'XpPrimitiveDump list failed.' }
-    Write-Host "Built $exe ($(@($cases).Count) cases)."
+    $committed = if (Test-Path $caseListPath) { @([IO.File]::ReadAllLines($caseListPath)) } else { @() }
+    if (($cases -join "`n") -ne ($committed -join "`n")) {
+        if (-not $WriteCaseList) { throw "Case list differs from $caseListPath; rerun with -WriteCaseList if the change is intended." }
+        [IO.File]::WriteAllText([IO.Path]::GetFullPath($caseListPath), ($cases -join "`n") + "`n")
+        Write-Host "Rewrote $caseListPath."
+    }
+    Write-Host "Built $exe ($($cases.Count) cases)."
     $exe
 }
 
@@ -122,15 +144,28 @@ function Invoke-Stage {
 }
 
 # Returns @{ <relative dir> = parsed index } for every index.json under $root.
+# Each dump must hold exactly the committed case list, so two trees that are
+# incomplete in the same way cannot pass Check.
 function Read-Tree([string]$root, [System.Collections.Generic.List[string]]$failures) {
     $root = (Resolve-Path $root).Path
+    $expected = @(Read-CaseList)
     $tree = @{}
+    foreach ($p in Get-ChildItem -Recurse -Directory -Filter '*.partial' $root) {
+        $failures.Add("$($p.FullName): failed run left a .partial directory")
+    }
     foreach ($ix in Get-ChildItem -Recurse -File -Filter index.json $root) {
         $dir = $ix.DirectoryName
+        if ($dir -like '*.partial') { continue }
         $rel = if ($dir.Length -gt $root.Length) { $dir.Substring($root.Length + 1) } else { '.' }
         $index = [IO.File]::ReadAllText($ix.FullName) | ConvertFrom-Json
         $tree[$rel] = @{ Dir = $dir; Index = $index }
         if ($index.provenance -ne 'captured-legacy-dump') { $failures.Add("${rel}: provenance is '$($index.provenance)'") }
+        if ((Split-Path -Leaf $dir) -ne $index.pixelMode) { $failures.Add("${rel}: directory does not match pixelMode '$($index.pixelMode)'") }
+        $got = @($index.cases | ForEach-Object { '{0} {1} {2}' -f $_.id, $_.op, [bool]$_.control })
+        $want = @($expected | ForEach-Object { '{0} {1} {2}' -f $_.Id, $_.Op, $_.Control })
+        if (($got -join '|') -ne ($want -join '|')) {
+            $failures.Add("${rel}: case list is not the committed cases.txt ($($got.Count) cases, expected $($want.Count))")
+        }
         $ids = @{}
         foreach ($c in $index.cases) {
             if ($ids.ContainsKey($c.id)) { $failures.Add("${rel}: duplicate case $($c.id)") }
@@ -149,6 +184,42 @@ function Read-Tree([string]$root, [System.Collections.Generic.List[string]]$fail
     }
     if ($tree.Count -eq 0) { $failures.Add("no index.json under $root") }
     $tree
+}
+
+# The committed tree: both packages, at least 32-bit, the same modes for each,
+# nothing else at the root, and an environment.json with the operator fields
+# filled in and the DirectDraw runtime DLLs hashed.
+function Test-Coverage([string]$root, $tree, [System.Collections.Generic.List[string]]$failures) {
+    $root = (Resolve-Path $root).Path
+    $modes = @{}
+    foreach ($rel in $tree.Keys) {
+        $parts = $rel -split '\\'
+        if ($parts.Count -ne 2 -or $packages -notcontains $parts[0]) { $failures.Add("${rel}: not a <package>\<mode> dump"); continue }
+        if (-not $modes.ContainsKey($parts[0])) { $modes[$parts[0]] = @() }
+        $modes[$parts[0]] += $parts[1]
+    }
+    foreach ($p in $packages) {
+        if (@($modes[$p]) -notcontains '32') { $failures.Add("$p\32: missing (the 32-bit capture is required)") }
+    }
+    $a = (@($modes['reconstructed']) | Sort-Object) -join ','; $b = (@($modes['official']) | Sort-Object) -join ','
+    if ($a -ne $b) { $failures.Add("pixel modes differ: reconstructed [$a], official [$b]") }
+
+    $allowed = 'README.md', '.gitattributes', 'cases.txt', 'environment.json'
+    foreach ($f in Get-ChildItem -File -Force $root) { if ($allowed -notcontains $f.Name) { $failures.Add("stray root file $($f.Name)") } }
+    foreach ($d in Get-ChildItem -Directory $root) { if ($packages -notcontains $d.Name) { $failures.Add("stray root directory $($d.Name)") } }
+
+    $envPath = Join-Path $root 'environment.json'
+    if (-not (Test-Path $envPath)) { $failures.Add('environment.json missing'); return }
+    $env = [IO.File]::ReadAllText($envPath) | ConvertFrom-Json
+    foreach ($field in 'os', 'clr', 'netfx35', 'directX', 'virtualBox', 'graphicsController', 'guestAdditions', 'videoDevice') {
+        $v = $env.$field
+        if (-not $v -or $v -eq 'unrecorded' -or $v -eq 'unreadable') { $failures.Add("environment.json: $field is '$v'") }
+    }
+    if (-not $env.clr -or -not $env.clr.StartsWith('2.0.50727')) { $failures.Add("environment.json: clr '$($env.clr)' is not CLR 2") }
+    foreach ($dll in 'ddraw.dll', 'dx7vb.dll', 'gdiplus.dll') {
+        $m = @($env.modules | Where-Object { (Split-Path -Leaf $_.path) -ieq $dll })
+        if ($m.Count -ne 1 -or $m[0].sha256 -notmatch '^[0-9a-f]{64}$') { $failures.Add("environment.json: no hashed $dll") }
+    }
 }
 
 # First differing byte of two case files, named by block.
@@ -207,6 +278,7 @@ switch ($Action) {
     'Verify' {
         $failures = New-Object System.Collections.Generic.List[string]
         $tree = Read-Tree $Path $failures
+        Test-Coverage $Path $tree $failures
         Write-Host "$($tree.Count) dump(s) under $Path."
         Write-Result 'Verify' $failures
     }

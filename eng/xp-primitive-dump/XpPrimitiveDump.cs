@@ -41,6 +41,10 @@ namespace FreeTrain.XpPrimitiveDump
 		public bool ResetClip;       // resetClipRect() after setting Clip
 		public int[][] Points;
 		public int DstSeed, SrcSeed;
+		// Control case: plain inputs every working DirectDraw handles. It must return
+		// no error and change the destination (hitTest: report at least one "true");
+		// otherwise the run is a harness failure, not a characterization.
+		public bool Control;
 
 		// Results
 		public string Error = "none";
@@ -214,7 +218,26 @@ namespace FreeTrain.XpPrimitiveDump
 			Case sp = Make("createSprite-blt", "createSprite", d16, d17);
 			sp.Args = new[] { -2, 1 };
 			l.Add(sp);
+
+			foreach (Case c in l)
+				c.Control = Array.IndexOf(ControlIds, c.Id) >= 0;
 			return l;
+		}
+
+		public static readonly string[] ControlIds = {
+			"bltFast-key-aligned", "blt-key-aligned", "blt-nokey-aligned", "bltStretch-up2x",
+			"fill-whole-odd", "fillRect-inner", "hitTest-key", "drawPolygon-diamond",
+			"createBitmap-aligned", "createFromImage-odd", "createSprite-blt",
+		};
+
+		// Why a control case failed, or null.
+		public static string ControlFailure(Case c)
+		{
+			if (!c.Control || c.HarnessError != null) return null;
+			if (c.Error != "none") return "control case returned " + c.Error;
+			if (c.Op == "hitTest") return Array.IndexOf(c.Results, "true") >= 0 ? null : "control case: no HitTest returned true";
+			if (c.Op == "createBitmap" || c.Op == "createFromImage") return null;
+			return c.ChangedPixels > 0 ? null : "control case changed no destination pixels";
 		}
 	}
 
@@ -238,7 +261,7 @@ namespace FreeTrain.XpPrimitiveDump
 		public static int Main(string[] args)
 		{
 			if (args.Length == 1 && args[0] == "list") {
-				foreach (Case c in Cases.Build()) Console.WriteLine("{0,-32} {1}", c.Id, c.Op);
+				foreach (Case c in Cases.Build()) Console.WriteLine("{0,-32} {1,-16}{2}", c.Id, c.Op, c.Control ? "control" : "");
 				return 0;
 			}
 			if (args.Length < 4 || args[0] != "dump") {
@@ -310,19 +333,35 @@ namespace FreeTrain.XpPrimitiveDump
 				catch (Exception e) { c.HarnessError = e.GetType().Name + ": " + e.Message; }
 			}
 
-			Directory.CreateDirectory(dir);
-			foreach (Case c in cases)
-				if (c.HarnessError == null) File.WriteAllBytes(Path.Combine(dir, c.Id + ".bin"), Bytes(c));
-			File.WriteAllText(Path.Combine(dir, "index.json"), Index(label, mode, cases), new UTF8Encoding(false));
-			WriteEnvironment(outRoot, vbox, graphics);
-
-			int failed = 0;
+			List<string> failures = new List<string>();
 			foreach (Case c in cases) {
-				if (c.HarnessError != null) { failed++; Console.WriteLine("  HARNESS FAIL {0}: {1}", c.Id, c.HarnessError); }
-				else if (c.Error != "none") Console.WriteLine("  {0}: {1}", c.Id, c.Error);
+				if (c.HarnessError != null) failures.Add(c.Id + ": " + c.HarnessError);
+				string control = Cases.ControlFailure(c);
+				if (control != null) failures.Add(c.Id + ": " + control);
+				if (c.HarnessError == null && c.Error != "none") Console.WriteLine("  {0}: {1}", c.Id, c.Error);
 			}
-			Console.WriteLine("{0}\\{1}: {2} cases, {3} harness failures -> {4}", label, mode, cases.Count, failed, dir);
-			return failed == 0 ? 0 : 1;
+			string envProblem = CheckEnvironment(outRoot, EnvironmentJson(vbox, graphics));
+			if (envProblem != null) failures.Add(envProblem);
+
+			// Everything goes to <dir>.partial first. Only a run without failures is
+			// renamed to <dir>, so a failed run never leaves a dump a retry refuses to replace.
+			string partial = dir + ".partial";
+			if (Directory.Exists(partial)) Directory.Delete(partial, true);
+			Directory.CreateDirectory(partial);
+			foreach (Case c in cases)
+				if (c.HarnessError == null) File.WriteAllBytes(Path.Combine(partial, c.Id + ".bin"), Bytes(c));
+			File.WriteAllText(Path.Combine(partial, "index.json"), Index(label, mode, cases), new UTF8Encoding(false));
+
+			foreach (string f in failures) Console.WriteLine("  HARNESS FAIL " + f);
+			if (failures.Count > 0) {
+				Console.WriteLine("{0}\\{1}: {2} cases, {3} harness failures; NOT a dump, diagnostics left in {4}", label, mode, cases.Count, failures.Count, partial);
+				return 1;
+			}
+			Directory.Move(partial, dir);
+			string env = Path.Combine(outRoot, "environment.json");
+			if (!File.Exists(env)) File.WriteAllText(env, EnvironmentJson(vbox, graphics), new UTF8Encoding(false));
+			Console.WriteLine("{0}\\{1}: {2} cases, 0 harness failures -> {3}", label, mode, cases.Count, dir);
+			return 0;
 		}
 
 		// ---- pixel format and memory access ------------------------------------
@@ -704,6 +743,7 @@ namespace FreeTrain.XpPrimitiveDump
 				j.Append("    {\n");
 				j.AppendFormat("      \"id\": \"{0}\",\n", c.Id);
 				j.AppendFormat("      \"op\": \"{0}\",\n", c.Op);
+				j.AppendFormat("      \"control\": {0},\n", c.Control ? "true" : "false");
 				j.AppendFormat("      \"dst\": {0},\n", c.Dst == null ? "null" : Ints(new[] { c.Dst[0], c.Dst[1], c.DstPitch }));
 				j.AppendFormat("      \"src\": {0},\n", c.Src == null ? "null" : Ints(new[] { c.Src[0], c.Src[1], c.SrcPitch }));
 				j.AppendFormat("      \"args\": {0},\n", Ints(c.Args));
@@ -771,9 +811,9 @@ namespace FreeTrain.XpPrimitiveDump
 			return RegValue(p.Substring(prefix.Length), "Device Description");
 		}
 
-		// Mode-independent facts about the VM. Written once per output root; a later run
-		// that sees different facts writes a side file instead of overwriting.
-		static void WriteEnvironment(string outRoot, string vbox, string graphics)
+		// Mode-independent facts about the VM, written once per output root. Every run
+		// into the same root must see the same facts (see CheckEnvironment).
+		static string EnvironmentJson(string vbox, string graphics)
 		{
 			StringBuilder j = new StringBuilder();
 			j.Append("{\n");
@@ -798,15 +838,21 @@ namespace FreeTrain.XpPrimitiveDump
 				j.AppendFormat("    {{ \"path\": {0}, \"version\": {1}, \"sha256\": \"{2}\" }}{3}\n",
 					Str(paths[i]), Str(FileVersion(paths[i])), FileSha(paths[i]), i + 1 < paths.Count ? "," : "");
 			j.Append("  ]\n}\n");
+			return j.ToString();
+		}
 
-			Directory.CreateDirectory(outRoot);
+		// Null when this run may join outRoot. A root records one environment, so a
+		// differing one is a failure; its facts go to environment.mismatch.json.
+		static string CheckEnvironment(string outRoot, string json)
+		{
+			if (json.Contains("\"virtualBox\": \"unrecorded\"") || json.Contains("\"graphicsController\": \"unrecorded\""))
+				return "environment: pass --vbox and --graphics";
 			string env = Path.Combine(outRoot, "environment.json");
-			if (!File.Exists(env)) File.WriteAllText(env, j.ToString(), new UTF8Encoding(false));
-			else if (File.ReadAllText(env) != j.ToString()) {
-				string side = Path.Combine(outRoot, "environment-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json");
-				File.WriteAllText(side, j.ToString(), new UTF8Encoding(false));
-				Console.WriteLine("  NOTE environment differs from environment.json; wrote " + side);
-			}
+			if (!File.Exists(env) || File.ReadAllText(env) == json) return null;
+			Directory.CreateDirectory(outRoot);
+			string side = Path.Combine(outRoot, "environment.mismatch.json");
+			File.WriteAllText(side, json, new UTF8Encoding(false));
+			return "environment differs from " + env + "; this run's facts are in " + side;
 		}
 	}
 

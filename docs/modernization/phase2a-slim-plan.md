@@ -76,7 +76,9 @@ Still open: assertions for `bltShape`, `bltHueTransform`, and night darkening be
 - `-Action Stage` builds the transfer ISO `.artifacts\xp-primitive-dump\xp-primitive-dump-kit.iso`. The ISO holds `tool\`, plus `reconstructed\` and `official\`, each with `DirectDraw.net.dll`, `Interop.DxVBLib.dll`, `Interop.DirectDrawAlphaBlendLib.dll`, and `DirectDraw.AlphaBlend.dll`. The official files come from the pinned `FreeTrain20070604.zip`, and the ISO carries a `SHA256SUMS.txt`.
 - The program loads the given package's assemblies by path. It checks the pinned `DirectDraw.AlphaBlend.dll` hash and calls its `DllRegisterServer`, as `tools/Driver/Driver.cs` does, because `Surface` activates `AlphaBlenderClass` statically.
 - It creates surfaces with `createOffscreenSurface` (system memory) and runs the cases through the public facade. It reads results through a full-surface lock.
-- A DirectDraw error is recorded as data. Only a harness failure gives a nonzero exit, and the program refuses to overwrite an existing dump.
+- A DirectDraw error is recorded as data. A harness failure gives a nonzero exit. These count as harness failures: an exception outside the operation, any of the 11 control cases failing (no error and a visible change required), and an environment that differs from the one already recorded in the output root.
+- Output goes to `<mode>.partial` and is renamed to `<mode>` only when the run is clean, so a failed run never blocks a retry. The program refuses to overwrite a finished dump.
+- `fixtures/xp-primitive-dumps/cases.txt` pins the case list. `Verify` and `Check` reject any dump that lacks a case, and `Verify` also requires 32-bit dumps for both packages, matching mode sets, and a complete `environment.json`.
 
 **Runbook.** Do this once, in one VM session. Commands in the guest run in `cmd.exe` as the local administrator, because `DllRegisterServer` writes `HKCR`.
 
@@ -91,7 +93,7 @@ Still open: assertions for `bltShape`, `bltHueTransform`, and night darkening be
    fc /b D:\official\*.* official\*.*
    ```
    Every `fc` must report no differences.
-4. **Guest: 32-bit runs.** Replace `<vbox>` with the host's VirtualBox version and `<controller>` with the VM's graphics controller, for example `VBoxVGA`. Each command must end with `0 harness failures`. Lines naming a case with an HRESULT are recorded DirectDraw behavior.
+4. **Guest: 32-bit runs.** Replace `<vbox>` with the host's VirtualBox version and `<controller>` with the VM's graphics controller, for example `VBoxVGA`. Each command must end with `0 harness failures`. Lines naming a case with an HRESULT are recorded DirectDraw behavior. On `HARNESS FAIL`, the program leaves only `<mode>.partial`. Copy that directory out for diagnosis (step 6) and stop; do not commit anything from that session.
    ```bat
    tool\XpPrimitiveDump.exe dump reconstructed out reconstructed --vbox <vbox> --graphics <controller>
    tool\XpPrimitiveDump.exe dump official out official --vbox <vbox> --graphics <controller>

@@ -1,0 +1,50 @@
+bltFast-key-aligned              bltFast         control
+bltFast-key-odd-width            bltFast
+bltFast-key-negative-dest        bltFast
+bltFast-key-overrun              bltFast
+bltFast-key-sub-rect             bltFast
+bltFast-nokey-aligned            bltFast
+bltFast-nokey-sub-rect           bltFast
+blt-key-aligned                  blt             control
+blt-key-odd-width                blt
+blt-key-negative-dest            blt
+blt-key-overrun                  blt
+blt-key-sub-rect                 blt
+blt-nokey-aligned                blt             control
+blt-nokey-negative-dest          blt
+blt-nokey-overrun                blt
+blt-key-truncated-aligned        blt
+blt-clip-inner-aligned           blt
+blt-clip-beyond-surface-aligned  blt
+blt-clip-disjoint-aligned        blt
+blt-clip-reset-aligned           blt
+blt-clip-inner-negative-dest     blt
+bltStretch-up2x                  bltStretch      control
+bltStretch-down                  bltStretch
+bltStretch-odd                   bltStretch
+bltStretch-key-up2x              bltStretch
+bltStretch-negative-dest         bltStretch
+bltStretch-overrun               bltStretch
+bltStretch-mirror                bltStretch
+bltStretch-clip-up2x             bltStretch
+fill-whole-odd                   fill            control
+fill-whole-white                 fill
+fill-whole-dim                   fill
+fill-whole-clip                  fill
+fillRect-inner                   fillRect        control
+fillRect-negative                fillRect
+fillRect-overrun                 fillRect
+fillRect-outside                 fillRect
+fillRect-clip                    fillRect
+hitTest-key                      hitTest         control
+hitTest-nokey                    hitTest
+drawPolygon-diamond              drawPolygon     control
+drawPolygon-negative             drawPolygon
+drawPolygon-overrun              drawPolygon
+drawBox-inner                    drawBox
+drawBox-negative                 drawBox
+drawBox-overrun                  drawBox
+createBitmap-aligned             createBitmap    control
+createBitmap-odd                 createBitmap
+createFromImage-odd              createFromImage control
+createSprite-blt                 createSprite    control
