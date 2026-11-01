@@ -94,7 +94,14 @@ One VM, official package, 1024 x 768 x 32-bit, VirtualBox lossless PNG. Nine sce
 | `season-summer` | `season-summer-v1` | Summer mountain palette |
 | `season-winter` | `season-winter-v1` | Winter mountain palette and winter ground chip |
 
-The approved draft folded directional content into `transport-day`. That doesn't fit: the directional layout uses all four edges of its 30 x 30 map, and the transport map is already full. Directional content therefore keeps its own save, but only as one fixed viewport. The conditional four-capture split mode is dropped. If one viewport cannot show all four islands, record that in `notes` as a known limitation. Spring and autumn are covered by the code-derived tests on palette selection.
+**Decision (approved 2026-11-01): directional content keeps its own save and a single screenshot.** The approved draft folded directional content into `transport-day`. That doesn't fit: the directional layout uses all four edges of its 30 x 30 map, and the transport map is already full. The transport map is not to be redesigned to hold it. Keeping the scenes separate is preferred for characterization anyway:
+
+- They exercise different behavior. `transport-day` covers roads, rail junctions, trains, bridges, structures, and layering between object types. `directional-day` covers N/S/E/W orientation, sprite selection, occlusion, and draw order in the fixed quarter view.
+- Overlapping sprites in a crowded combined scene could hide the features being characterized.
+- A directional regression can be diagnosed without the complexity of the full transport scene.
+- It preserves the existing directional layout, designed around the four map edges, at a cost of one save and one screenshot.
+
+The conditional four-capture split mode is dropped. If one viewport cannot show all four islands, record that in `notes` as a known limitation; do not add captures. Spring and autumn are covered by the code-derived tests on palette selection.
 
 **Capture procedure.**
 
