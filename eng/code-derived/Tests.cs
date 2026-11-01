@@ -21,8 +21,11 @@ static class Golden
     public static bool WriteMode;
     public static readonly Dictionary<string, List<string>> Pending = new Dictionary<string, List<string>>();
 
+    public static readonly HashSet<string> Checked = new HashSet<string>(StringComparer.Ordinal);
+
     public static void Check(string name, IList<string> lines)
     {
+        Checked.Add(name);
         if (WriteMode) { Pending[name] = new List<string>(lines); return; }
         string path = Path.Combine(Root, name + ".txt");
         if (!File.Exists(path)) throw new AssertionException("missing golden " + path + " (run with -Action Write)");
@@ -34,6 +37,9 @@ static class Golden
     public static void Flush()
     {
         Directory.CreateDirectory(Root);
+        // Drop goldens no test produces any more, so Check's orphan rule holds after a Write.
+        foreach (string f in Directory.GetFiles(Root, "*.txt"))
+            if (!Pending.ContainsKey(Path.GetFileNameWithoutExtension(f))) File.Delete(f);
         foreach (KeyValuePair<string, List<string>> e in Pending)
             File.WriteAllText(Path.Combine(Root, e.Key + ".txt"), string.Join("\n", e.Value.ToArray()) + "\n", new UTF8Encoding(false));
     }

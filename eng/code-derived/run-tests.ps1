@@ -10,6 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $PackageRoot = (Resolve-Path $PackageRoot).Path
 $core = Join-Path $PackageRoot 'FreeTrain.Core.dll'
+# The harness compares this hash with fixtures/code-derived/provenance.txt.
 Write-Host "FreeTrain.Core.dll SHA-256 $((Get-FileHash -Algorithm SHA256 $core).Hash)"
 
 New-Item -ItemType Directory -Force $BuildRoot | Out-Null

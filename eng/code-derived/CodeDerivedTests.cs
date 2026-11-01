@@ -14,6 +14,7 @@ using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 using org.kohsuke.directdraw;
@@ -61,12 +62,14 @@ static class Runner
     public static int Run()
     {
         int passed = 0, failed = 0;
+        List<string> names = new List<string>();
         foreach (Type t in typeof(Runner).Assembly.GetTypes())
         {
             foreach (MethodInfo m in t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
             {
                 if (m.GetCustomAttributes(typeof(TestAttribute), false).Length == 0) continue;
                 string name = t.Name + "." + m.Name;
+                names.Add(name);
                 try
                 {
                     Fixtures.Reset();
@@ -81,6 +84,16 @@ static class Runner
                 }
             }
         }
+        try
+        {
+            Inventory(names);
+            Console.WriteLine("PASS inventory (" + names.Count + " tests, " + Golden.Checked.Count + " golden files, Core hash)");
+        }
+        catch (AssertionException e)
+        {
+            failed++;
+            Console.WriteLine("FAIL inventory: " + e.Message);
+        }
         Console.WriteLine("{0} passed, {1} failed", passed, failed);
         if (failed != 0) return 1;
         if (Golden.WriteMode)
@@ -89,6 +102,49 @@ static class Runner
             Console.WriteLine("wrote {0} golden files to {1}", Golden.Pending.Count, Golden.Root);
         }
         return 0;
+    }
+
+    /// <summary>
+    /// Pins the corpus: the discovered test set must equal tests.txt (a test that loses
+    /// its [Test] attribute fails here instead of vanishing), the package's
+    /// FreeTrain.Core.dll must be the one the goldens were written from, and every
+    /// golden file must have been consumed by some test.
+    /// </summary>
+    static void Inventory(List<string> names)
+    {
+        names.Sort(StringComparer.Ordinal);
+        string list = Path.Combine(Golden.Root, "tests.txt");
+        if (!Golden.WriteMode && File.Exists(list))
+        {
+            List<string> pinnedTests = new List<string>(File.ReadAllText(list).TrimEnd('\n').Split('\n'));
+            List<string> missing = pinnedTests.FindAll(delegate (string n) { return !names.Contains(n); });
+            List<string> extra = names.FindAll(delegate (string n) { return !pinnedTests.Contains(n); });
+            if (missing.Count + extra.Count > 0)
+                throw new AssertionException("test set differs from tests.txt: missing [" + string.Join(", ", missing.ToArray()) +
+                    "], unexpected [" + string.Join(", ", extra.ToArray()) + "]");
+        }
+        Golden.Check("tests", names);
+
+        string core = Path.Combine(Program.PackageRoot, "FreeTrain.Core.dll");
+        string hash;
+        using (SHA256 sha = SHA256.Create())
+        using (FileStream fs = File.OpenRead(core))
+            hash = BitConverter.ToString(sha.ComputeHash(fs)).Replace("-", "");
+        string[] provenance = { "FreeTrain.Core.dll sha256 " + hash };
+        if (!Golden.WriteMode)
+        {
+            string path = Path.Combine(Golden.Root, "provenance.txt");
+            string pinned = File.Exists(path) ? File.ReadAllText(path).TrimEnd('\n') : "(missing)";
+            if (pinned != provenance[0])
+                throw new AssertionException("goldens were written from <" + pinned + "> but the package has <" + provenance[0] +
+                    ">. Rebuild the pinned package, or regenerate with -Action Write and review the golden diff.");
+        }
+        Golden.Check("provenance", provenance);
+
+        if (!Golden.WriteMode)
+            foreach (string f in Directory.GetFiles(Golden.Root, "*.txt"))
+                if (!Golden.Checked.Contains(Path.GetFileNameWithoutExtension(f)))
+                    throw new AssertionException("golden file " + Path.GetFileName(f) + " is not checked by any test");
     }
 }
 
@@ -372,7 +428,7 @@ static class Clones
     /// <summary>
     /// MountainVoxel.selectColor() on a <see cref="MountainStandIn"/> receiver: allocating a
     /// MountainVoxel runs its static constructor, which needs DirectDraw. The receiver is
-    /// reached only through location and getHeight(int), both redirected; isUnderWater,
+    /// reached only through Voxel.location and getHeight(int), both redirected; isUnderWater,
     /// currentMountainColors, and mapColor are cloned shipped bodies.
     /// </summary>
     public static DynamicMethod SelectColor()
@@ -380,15 +436,16 @@ static class Clones
         if (selectColor == null)
         {
             Type mv = typeof(MountainVoxel);
-            var standIn = Subs();
-            standIn[Fixtures.Getter(typeof(Voxel), "location")] = S("StandInLocation");
-            standIn[Fixtures.Getter(typeof(AbstractVoxelImpl), "location")] = S("StandInLocation");
-            standIn[Fixtures.Field(mv, "mountainColors")] = S("GetMountainColors");
+            var colorsSubs = Subs();
+            colorsSubs[Fixtures.Field(mv, "mountainColors")] = S("GetMountainColors");
+            var waterSubs = Subs();
+            waterSubs[Fixtures.Getter(typeof(Voxel), "location")] = S("StandInLocation");
 
             var subs = Subs();
-            subs[Fixtures.Getter(mv, "currentMountainColors")] = IlTransplant.Clone(Fixtures.Getter(mv, "currentMountainColors"), standIn, typeof(object));
-            subs[Fixtures.Getter(mv, "isUnderWater")] = IlTransplant.Clone(Fixtures.Getter(mv, "isUnderWater"), standIn, typeof(object));
-            subs[Fixtures.Method(mv, "mapColor", typeof(Color))] = IlTransplant.Clone(Fixtures.Method(mv, "mapColor", typeof(Color)), standIn, typeof(object));
+            subs[Fixtures.Getter(mv, "currentMountainColors")] = IlTransplant.Clone(Fixtures.Getter(mv, "currentMountainColors"), colorsSubs, typeof(object));
+            subs[Fixtures.Getter(mv, "isUnderWater")] = IlTransplant.Clone(Fixtures.Getter(mv, "isUnderWater"), waterSubs, typeof(object));
+            // mapColor never touches its receiver, so it needs no substitution.
+            subs[Fixtures.Method(mv, "mapColor", typeof(Color))] = IlTransplant.Clone(Fixtures.Method(mv, "mapColor", typeof(Color)), null, typeof(object));
             subs[Fixtures.Method(mv, "getHeight", typeof(int))] = S("StandInHeight");
             subs[Fixtures.Field(mv, "waterColors")] = S("GetWaterColors");
             selectColor = IlTransplant.Clone(Fixtures.Method(mv, "selectColor"), subs, typeof(object));

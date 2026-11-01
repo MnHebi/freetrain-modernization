@@ -65,6 +65,8 @@ static class IlTransplant
         DynamicILInfo info = dm.GetDynamicILInfo();
 
         byte[] il = (byte[])body.GetILAsByteArray().Clone();
+        Dictionary<MemberInfo, MethodInfo> asDict = subs as Dictionary<MemberInfo, MethodInfo>;
+        HashSet<MemberInfo> matched = asDict != null ? new HashSet<MemberInfo>(asDict.Comparer) : new HashSet<MemberInfo>();
         int pos = 0;
         while (pos < il.Length)
         {
@@ -103,9 +105,11 @@ static class IlTransplant
                 {
                     MemberInfo m = module.ResolveMember(BitConverter.ToInt32(il, pos), typeArgs, null);
                     MethodInfo sub;
-                    if (subs.TryGetValue(m, out sub) && (op == OpCodes.Ldsfld || op == OpCodes.Call || op == OpCodes.Callvirt))
+                    if (subs.TryGetValue(m, out sub))
                     {
-                        if (op.Size != 1) throw new InvalidOperationException("unexpected prefix");
+                        if (op != OpCodes.Ldsfld && op != OpCodes.Call && op != OpCodes.Callvirt)
+                            throw new InvalidOperationException(Describe(source) + ": " + op + " of substituted " + m.Name + " cannot be redirected");
+                        matched.Add(m);
                         il[opStart] = (byte)OpCodes.Call.Value;
                         Patch(il, pos, sub is DynamicMethod ? info.GetTokenFor((DynamicMethod)sub) : info.GetTokenFor(sub.MethodHandle));
                     }
@@ -120,6 +124,12 @@ static class IlTransplant
                     throw new NotSupportedException(op.OperandType.ToString());
             }
         }
+
+        // A substitution that matches nothing means the shipped body is not the one the
+        // test was written against, or the key names the wrong member: fail, never ignore.
+        foreach (MemberInfo key in subs.Keys)
+            if (!matched.Contains(key))
+                throw new InvalidOperationException(Describe(source) + ": substitution for " + key.DeclaringType.Name + "." + key.Name + " matched no instruction");
 
         SignatureHelper locals = SignatureHelper.GetLocalVarSigHelper();
         foreach (LocalVariableInfo lv in body.LocalVariables) locals.AddArgument(lv.LocalType, lv.IsPinned);
@@ -153,6 +163,8 @@ static class IlTransplant
         }
         return dm;
     }
+
+    static string Describe(MethodBase m) { return m.DeclaringType.Name + "." + m.Name; }
 
     static int TokenFor(DynamicILInfo info, MemberInfo m)
     {

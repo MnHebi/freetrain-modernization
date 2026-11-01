@@ -76,7 +76,20 @@ Coordinate conversion, voxel traversal, and season/night resource selection (`Pi
 
 **Result (2026-11-01).** `eng/code-derived/run-tests.ps1` compiles `eng/code-derived/*.cs` with the Framework `csc` as an x86 .NET Framework 4 console and runs 29 tests against the Phase 1 package's `FreeTrain.Core.dll`. Nothing creates a `DirectDraw` object or needs COM registration, and production source is unchanged. Exact sequences and tables are compared with golden files in `fixtures/code-derived/`. `-Action Check` (the default) fails on any difference; `-Action Write` regenerates them and refuses to when an assertion fails. Changing one character of a golden file makes `Check` fail.
 
-*Runner.* The runner is a 30-line `[Test]`-attribute loop in the harness. NUnit and xUnit would mean new NuGet inputs with their own provenance, plus an adapter for a 32-bit .NET Framework process loading CLR 2 assemblies. The probe toolchain (`csc` plus a PowerShell wrapper) already handles that, so the tests reuse it.
+*What is characterized.* The subject is the **source-built Debug reconstruction** from `eng/legacy-build.ps1`, not the official 2007 release binaries. `fixtures/code-derived/provenance.txt` pins the SHA-256 of the `FreeTrain.Core.dll` the goldens were written from, and `Check` fails against any other build. Two consequences follow:
+
+- The Debug build keeps `Debug.Assert`, which is behind quirk I.
+- Whether the official `FreeTrain.Core.dll` behaves identically is a question for item 4's build comparison. Running this suite against the official package needs a separate golden set.
+
+*Guards against silent loss of coverage.*
+
+- `IlTransplant` fails a clone when a requested substitution matches no instruction, or matches one it cannot redirect. A changed method body or a wrong key cannot leave the original DirectDraw reference in place unnoticed.
+- The discovered test set must equal `tests.txt`, so a test that loses its `[Test]` attribute is reported by name.
+- Every golden file must be consumed by a test.
+
+Each guard was checked by tampering: an unmatched key, a removed attribute, a wrong hash, and a stray golden file each make `Check` fail.
+
+*Runner.* The runner is a small `[Test]`-attribute loop in the harness. NUnit and xUnit would mean new NuGet inputs with their own provenance, plus an adapter for a 32-bit .NET Framework process loading CLR 2 assemblies. The probe toolchain (`csc` plus a PowerShell wrapper) already handles that, so the tests reuse it.
 
 *Reaching the code without DirectDraw.*
 
