@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 3,
+  "fixtureSet": "phase2a-scene-smoke",
+  "provenance": "captured-official-release",
+  "package": {
+    "archiveFilename": "FreeTrain20070604.zip",
+    "archiveSha256": "70374a836a9f1bc28b16dd65c323fc1b21b4142f10344d19335a65690c16c23d"
+  },
+  "display": {
+    "width": 1024,
+    "height": 768,
+    "colorDepthBits": 32
+  },
+  "saves": [
+    "terrain-elevation-water-v1",
+    "transport-structures-v1",
+    "directional-content-v1",
+    "season-summer-v1",
+    "season-winter-v1"
+  ],
+  "captures": [
+    { "id": "terrain-day", "save": "terrain-elevation-water-v1", "coverage": "Elevation, slopes, shoreline, water" },
+    { "id": "terrain-night", "save": "terrain-elevation-water-v1", "coverage": "Night palette" },
+    { "id": "terrain-water-cut", "save": "terrain-elevation-water-v1", "coverage": "Water-level height cut" },
+    { "id": "transport-day", "save": "transport-structures-v1", "coverage": "Road, rail, station, bridge, 2x2 building, train" },
+    { "id": "transport-labels", "save": "transport-structures-v1", "coverage": "GDI station names (review region only)" },
+    { "id": "transport-preview", "save": "transport-structures-v1", "coverage": "Alpha construction preview" },
+    { "id": "directional-day", "save": "directional-content-v1", "coverage": "N/S/E/W content and occlusion in the fixed camera" },
+    { "id": "season-summer", "save": "season-summer-v1", "coverage": "Summer mountain palette" },
+    { "id": "season-winter", "save": "season-winter-v1", "coverage": "Winter mountain palette and winter ground chip" }
+  ],
+  "reproductions": [
+    "terrain-day"
+  ]
+}

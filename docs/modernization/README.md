@@ -60,3 +60,13 @@ The original source archive and official runtime release were supplied after the
 - `phase1d-runtime-validation.md` — disposable XP SP3 x86 runtime, COM, smoke-test, and Phase 2 capture runbook
 - `eng/legacy-build-preflight.ps1` — non-mutating toolchain and dependency preflight
 - `eng/legacy-build.ps1` — external-input verification, no-registration interop generation, serial x86 build, and packaging
+
+## Phase 2 documents
+
+- `phase2a-slim-plan.md` — approved Phase 2A plan: native vectors from the shipped alpha DLL, single-VM DirectDraw primitive dumps, code-derived tests, an official/reconstructed build diff, and nine scene smoke captures
+- `phase2a-fixture-layouts.md` — coordinate-addressed ASCII construction plans for the terrain, transport, directional, and seasonal scene saves
+- `phase2a-legacy-oracle.md` — superseded paired-VM procedure, retained as chronology; its source-derived state evidence remains valid reference material
+- `renderer-compatibility.md` — renderer facade boundary, behavioral oracles, and the Phase 2 test taxonomy
+- `eng/native-vectors/` and `fixtures/native-vectors/` — fake-surface harness and committed byte-exact vectors for all five native routines in four pixel modes
+- `fixtures/renderer-oracle/` — scene catalog, sidecar format, and evidence layout
+- `eng/renderer-oracle.ps1` — scene validation (hashes, PNG decode, region bounds, reproduction exactness) and exact region comparison

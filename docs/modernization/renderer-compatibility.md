@@ -62,18 +62,17 @@ No bundled plugin directly accesses the property. The migration should therefore
 
 ## Phase 2 oracle policy
 
-The legacy DirectDraw renderer is not required to run on the Windows 11 development machine or in normal CI. Acceptable evidence sources are:
+The legacy DirectDraw renderer is not required to run on the Windows 11 development machine or in normal CI. Each oracle answers a different question; precedence applies only where two describe the same output:
 
-1. Legacy renderer capture in a compatible VM or historical machine
-2. Tests extracted from native pixel routines
-3. Deterministic vectors generated from the original C++ algorithms
-4. Known-good historical screenshots
-5. Manually reviewed reference images
-6. Static analysis of coordinate, clipping, and traversal code
+1. `native-vector`: the shipped `DirectDraw.AlphaBlend.dll` executed against fake surfaces on Windows 11 (`fixtures/native-vectors/`). This is authoritative for `bltAlpha`, `bltShape`, `bltColorTransform`, `bltHueTransform`, and night darkening, in every pixel mode.
+2. `captured-legacy-dump`: surface-memory dumps from a console harness run once in an XP VM. This is authoritative for DirectDraw-owned behavior: `bltFast`, `blt`, stretch, color key, clipping, `fill`, `HitTest`, polygon/box, and bitmap capture.
+3. `code-derived`: characterization tests of coordinate conversion, voxel traversal, and season/day-night resource selection.
+4. `captured-official-release`: scene smoke screenshots of the official SourceForge release in one XP VM (`fixtures/renderer-oracle/`).
+5. `historical-reference` and `manually-approved`: known-good historical screenshots and manually reviewed reference images.
 
-Each fixture must record its origin as `captured-legacy`, `native-vector`, `historical-reference`, `manually-approved`, or `code-derived`.
+A one-time build diff measures how far the source-built reconstruction drifts from the official release. It is evidence about the compared artifacts, not proof of runtime equivalence, so no Phase 2A oracle depends on it; a claim that the reconstruction renders identically needs runtime evidence. The values `captured-legacy` and `captured-reconstructed-legacy` are not used for new evidence. Renderer characterization is not gated on reconstructing VCR; preserve VCR source/binaries separately.
 
-The functioning disposable XP SP3 x86 runtime is the active `captured-legacy` oracle for Phase 2. Renderer characterization is not gated on reconstructing the optional VCR auxiliary build: use lossless hypervisor screenshots and the documented fixture procedure, not the VCR plug-in. Preserve the VCR source and official binaries separately as historical evidence.
+The approved plan, procedures, and exit-gate mapping are in `phase2a-slim-plan.md`. Native vectors and code-derived tests can start immediately; scene screenshots gate only the scene-smoke part of the exit gate.
 
 ## Test taxonomy
 
