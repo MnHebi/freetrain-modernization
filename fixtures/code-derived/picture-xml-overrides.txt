@@ -1,0 +1,5 @@
+Spring=b.bmp/night(b.bmp) Summer=b.bmp/night(b.bmp) Autumn=b.bmp/night(b.bmp) Winter=b.bmp/night(b.bmp)
+Spring=b.bmp/b_n.bmp Summer=b.bmp/b_n.bmp Autumn=b.bmp/b_n.bmp Winter=b.bmp/b_n.bmp
+Spring=b.bmp/b_n.bmp Summer=s.bmp/night(s.bmp) Autumn=f.bmp/night(f.bmp) Winter=w.bmp/w_n.bmp
+Spring=b.bmp/night(b.bmp) Summer=b.bmp/night(b.bmp) Autumn=b.bmp/night(b.bmp) Winter=w.bmp/night(w.bmp)
+Spring=b.bmp/night(b.bmp) Summer=b.bmp/night(b.bmp) Autumn=b.bmp/a_n.bmp Winter=b.bmp/night(b.bmp)
