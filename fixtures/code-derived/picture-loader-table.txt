@@ -1,0 +1,6 @@
+Spring=A/night(A) Summer=A/night(A) Autumn=A/night(A) Winter=A/night(A)
+Spring=A/night(A) Summer=A/night(A) Autumn=A/night(A) Winter=W/night(W)
+Spring=A/N Summer=A/SN Autumn=A/N Winter=A/N
+Spring=A/night(A) Summer=A/night(A) Autumn=F/FN Winter=A/night(A)
+Spring=null/null Summer=S/night(S) Autumn=null/null Winter=null/null
+Spring=A/night(A) Summer=A/night(A) Autumn=A/night(A) Winter=A/WN

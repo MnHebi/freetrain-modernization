@@ -74,6 +74,84 @@ Still open: assertions for `bltShape`, `bltHueTransform`, and night darkening be
 
 Coordinate conversion, voxel traversal, and season/night resource selection (`Picture.cs`, `ResourceUtil.cs`, `MountainVoxel.cs`, `Time.cs`) are pure logic. Write characterization tests against the existing code directly. No oracle captures required.
 
+**Result (2026-11-01).** `eng/code-derived/run-tests.ps1` compiles `eng/code-derived/*.cs` with the Framework `csc` as an x86 .NET Framework 4 console and runs 29 tests against the Phase 1 package's `FreeTrain.Core.dll`. Nothing creates a `DirectDraw` object or needs COM registration, and production source is unchanged. Exact sequences and tables are compared with golden files in `fixtures/code-derived/`. `-Action Check` (the default) fails on any difference; `-Action Write` regenerates them and refuses to when an assertion fails. Changing one character of a golden file makes `Check` fail.
+
+*What is characterized.* The subject is the **source-built Debug reconstruction** from `eng/legacy-build.ps1`, not the official 2007 release binaries. `fixtures/code-derived/provenance.txt` pins the SHA-256 of the `FreeTrain.Core.dll` the goldens were written from, and `Check` fails against any other build. Two consequences follow:
+
+- The Debug build keeps `Debug.Assert`, which is behind quirk I.
+- Whether the official `FreeTrain.Core.dll` behaves identically is a question for item 4's build comparison. Running this suite against the official package needs a separate golden set.
+
+*Guards against silent loss of coverage.*
+
+- `IlTransplant` fails a clone when a requested substitution matches no instruction, or matches one it cannot redirect. A changed method body or a wrong key cannot leave the original DirectDraw reference in place unnoticed.
+- The discovered test set must equal `tests.txt`, so a test that loses its `[Test]` attribute is reported by name.
+- Every golden file must be consumed by a test.
+
+Each guard was checked by tampering: an unmatched key, a removed attribute, a wrong hash, and a stray golden file each make `Check` fail.
+
+*Runner.* The runner is a small `[Test]`-attribute loop in the harness. NUnit and xUnit would mean new NuGet inputs with their own provenance, plus an adapter for a 32-bit .NET Framework process loading CLR 2 assemblies. The probe toolchain (`csc` plus a PowerShell wrapper) already handles that, so the tests reuse it.
+
+*Reaching the code without DirectDraw.*
+
+- `World` comes from its private temporary constructor (the one `CreatePreviewWorld` uses). That skips plug-ins, trains, clock handlers, and land values. `World.world` is assigned directly.
+- `QuarterViewDrawer` is allocated without its constructor (`FormatterServices.GetUninitializedObject`), and `world`, `topLeft`, and `_heightCutHeight` are set by reflection.
+- `ResourceUtil` and `MountainVoxel` have static constructors that create DirectDraw surfaces, and `Clock.tick` reads `MainWindow.mainWindow`. For these, `IlTransplant.cs` copies the shipped IL of the method into a `DynamicMethod`. It redirects only the listed member references, each a same-size `call` to a test double. The copied body runs exactly as shipped, and the declaring type's static constructor never runs. Redirected members:
+  - `draw(Rectangle, MapOverlay)`: `Surface.clipRect` (setter), `DrawContext.surface`, `ResourceUtil.getGroundChip` (itself a clone with `groundChips` redirected), `underWaterChip`, `underGroundChip`, `Core.options`.
+  - `Clock.tick`: `MainWindow.mainWindow` and `currentController`, both null.
+  - `MountainVoxel`: `fromHSV`, `loadColors`, `currentMountainColors`, `isUnderWater`, `mapColor`, and `selectColor` are cloned. Allocating a `MountainVoxel` runs its static constructor, so `selectColor` runs on a stand-in receiver with `location` and `getHeight(int)` redirected.
+- Sprites and voxels are recording doubles that log each draw call with its client point, `heightCutDiff`, and `drawGround` argument.
+
+*Covered.*
+
+- **Coordinates.**
+  - `World.fromXYZToAB`: +x → (+16,−8), +y → (+16,+8), +z → (0,−16), with the x origin at `(size.y−1)/2`. The result uses `World.world.size`, not the receiver's.
+  - `toHV`/`toXYZ` round-trip over a whole world, and the indexer stores at (h,v). Outside the world it returns `OutOfWorldVoxel`.
+  - Table of `isInsideWorld`/`isBorderOfWorld`, and `getBoundingBox`.
+  - `QuarterViewDrawer`: AB↔client conversion. `fromHVZToClient` equals `fromXYZToClient(toXYZ(…))` for every voxel.
+  - `fromABToHV` truncates toward zero.
+  - `fromABToXYZ` hit region, checked at every pixel of every tile: the half-open diamond `−16 ≤ dx−2dy < 16`, `16 ≤ dx+2dy < 48`. The top vertex belongs to the +x neighbour.
+  - Disambiguation probes `(x−z, y+z, z)` from the height-cut level down to 0 and falls back to z=0.
+- **Traversal** (the real `draw` loop).
+  - Order is v ascending (clamped to ≥0, extended by `2·heightCut` rows), then h ascending, then z ascending. The clip rect is the client rect.
+  - Without a height cut, z starts at the water level. Ground below water is never drawn. The water surface is `emptyChip.drawShape` in `#0072BC`, or `ColorMap.getNightColor` (`#001C2F`) at night, at the water level. It is drawn even under tiles whose ground is above water, then overpainted later in the same column.
+  - With a height cut, z starts at 0 and the water surface is skipped. Submerged ground uses `underWaterChip`, and `underGroundChip` caps ground above the cut. `heightCutDiff` is `Z−z+1`, or −1 without a cut.
+  - Transparent voxels still get their ground chip. `HoleVoxel` suppression makes z start one lower.
+  - Winter selects `groundChips[1]`.
+- **Time.**
+  - Start time (Year 1, April 1, 08:00, weekday 6) and its status-bar string.
+  - The 365-day calendar, month starts, weekday and weekend, and the year rollover.
+  - Seasons: Mar–May spring, Jun–Aug summer, Sep–Nov autumn, Dec–Feb winter.
+  - Day is `[06:00, 18:00)` at minute resolution.
+  - `useNightView` for `AlignClock`/`AlwaysDay`/`AlwaysNight`.
+  - `Clock.tick` invalidates pictures and repaints all voxels at 06:00 and 18:00 only.
+- **Resource selection.**
+  - The `Picture` loader table fill rules for code-built pictures and for XML `<override>`, including the `fall` alias and unknown `when` values.
+  - `Picture.surface` reads `loaders[season, useNightView]` (24 combinations).
+  - `ColorMap.getNightColor`.
+  - `getGroundChip` at season boundaries.
+  - The four season palettes and the water palette, parsed from the package's `res/mountainPalette.xml` by the shipped `loadColors`/`fromHSV`.
+  - `currentMountainColors` is indexed by season.
+  - `selectColor` for all 625 corner-height combinations, across 4 seasons × day/night × dry/under water.
+
+Characterized quirks; per `renderer-compatibility.md`, keep them until a decision says otherwise:
+
+- **D.** `draw` clamps v at 0 but not h. `(left−16)/32` truncates, so a dirty rect with left ≤ −16 indexes `groundLevels[−1, …]` and throws `IndexOutOfRangeException`. Whether the legacy UI can scroll that far is not established.
+- **E.** `shouldDrawGround` queries the voxel in cell z with `drawGround(false)` and cell z−1 with `drawGround(true)`. That is the opposite of the `HoleVoxel` doc comment. For a null or transparent ground cell the query runs twice. Implementers such as `SlopeRailRoad` must keep seeing the same arguments.
+- **F.** A `<picture>` night override is found only if it is the *first* `<override>` child. A later `when="night"` is silently ignored, and an automatic night image is used instead. Seasons without their own night image share spring's night loader instance. A season with only a day override gets an automatic night image of that override.
+- **G.** `MountainVoxel.fromHSV` throws `ArgumentException` for V=240, because 256·1.0 overflows `Color.FromArgb`. The shipped palette stays below that.
+- **H.** `ColorMap` light colors match only at alpha 255, and the result always has alpha 255.
+- **I.** The Phase 1 package is a Debug build. `Clock.tick` evaluates `Debug.Assert(queue.minPriority…)`, which throws on an empty queue. Real worlds always hold the hourly development handler, so this applies only to worlds without one, such as preview worlds.
+
+*Not reachable without DirectDraw, or not covered (explicit unknowns).*
+
+- Pixels of everything drawn: sprite blits, `drawShape` fills, `MountainVoxel.drawGround`/`drawTrees`, and the cliff surfaces drawn with GDI+ in its static constructor. These belong to items 1, 2, and 5.
+- `MountainVoxel`'s constructor and `getHeight` nibble decoding never execute, because instances cannot be allocated. The tests supply corner heights directly.
+- `ResourceUtil`'s static chip definitions (offsets 0/32/64/96 in `EmptyChip.bmp`), `loadSystemPicture`, and `findSystemResource` are known from source only.
+- `Picture.surface` after a successful load: assigning `sourceColorKey` and clearing `dirty` need a real `Surface`. Night images come from `buildNightImage` (item 1).
+- `updateScreen`: dirty-rect accumulation and its top clamp, `MapOverlay` `drawBefore`/`drawAfter`, station-name GDI text, and scroll reuse in the `origin` setter (`Surface.blt`). This is the exit gate's "dirty-region repaint sequencing" unknown.
+- `Core.options.drawBoundingBox` (`drawBox`), `Core.options.hideTrees`, `Clock.tick` with an active controller, and disambiguation with the real controllers.
+- Weather overlays (only `none` is reachable in r389).
+
 ### 4. Official vs reconstructed: compare the build, not screenshots
 
 This item measures how far the source-built reconstruction drifts from the shipped release. Run it once, comparing three things:
@@ -147,7 +225,7 @@ Phase 2B no longer waits for scene screenshots. Items 1, 3, and 4 can start imme
 - **Coordinate conversion and voxel traversal have coverage:** item 3.
 - **Representative scenes have provenance-tagged reference images:** item 5.
 - **The managed implementation can be tested automatically:** items 1–3 run in CI with committed vectors.
-- **Unknown legacy behavior is listed:** weather (only `none` is reachable in r389), dirty-region repaint sequencing, and any case the harnesses cannot reach.
+- **Unknown legacy behavior is listed:** weather (only `none` is reachable in r389), dirty-region repaint sequencing, and any case the harnesses cannot reach (item 3 lists its own).
 
 ## Footprint
 

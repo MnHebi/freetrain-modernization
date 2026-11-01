@@ -1,0 +1,15 @@
+day 0: Y1 M1 D1 dow0 Winter weekend
+day 31: Y1 M2 D1 dow3 Winter
+day 59: Y1 M3 D1 dow3 Spring
+day 90: Y1 M4 D1 dow6 Spring weekend
+day 120: Y1 M5 D1 dow1 Spring
+day 151: Y1 M6 D1 dow4 Summer
+day 181: Y1 M7 D1 dow6 Summer weekend
+day 212: Y1 M8 D1 dow2 Summer
+day 243: Y1 M9 D1 dow5 Autumn
+day 273: Y1 M10 D1 dow0 Autumn weekend
+day 304: Y1 M11 D1 dow3 Autumn
+day 334: Y1 M12 D1 dow5 Winter
+day 364: Y1 M12 D31 dow0 Winter weekend
+day 365: Y2 M1 D1 dow1 Winter
+day 366: Y2 M1 D2 dow2 Winter

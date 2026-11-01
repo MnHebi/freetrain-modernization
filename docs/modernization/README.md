@@ -68,5 +68,6 @@ The original source archive and official runtime release were supplied after the
 - `phase2a-legacy-oracle.md` — superseded paired-VM procedure, retained as chronology; its source-derived state evidence remains valid reference material
 - `renderer-compatibility.md` — renderer facade boundary, behavioral oracles, and the Phase 2 test taxonomy
 - `eng/native-vectors/` and `fixtures/native-vectors/` — fake-surface harness and committed byte-exact vectors for all five native routines in four pixel modes
+- `eng/code-derived/` and `fixtures/code-derived/` — DirectDraw-free characterization tests of coordinate conversion, voxel traversal, and season/day-night resource selection against the packaged `FreeTrain.Core.dll`, with golden files
 - `fixtures/renderer-oracle/` — scene catalog, sidecar format, and evidence layout
 - `eng/renderer-oracle.ps1` — scene validation (hashes, PNG decode, region bounds, reproduction exactness) and exact region comparison

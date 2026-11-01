@@ -1,0 +1,21 @@
+clip 0,0 96x64
+ground@0,16
+ground@32,16
+ground@64,16
+ground@16,24
+ground@48,24
+ground@80,24
+ground@0,32
+underGround@32,16
+ground@64,32
+voxel(1,2,0)@16,56 cut=3
+voxel(1,2,1)@16,40 cut=2
+voxel(1,2,2)@16,24 cut=1
+ground@48,40
+underWater@80,56
+ground@0,48
+ground@32,48
+ground@64,48
+ground@16,56
+ground@48,56
+ground@80,56

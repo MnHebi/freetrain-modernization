@@ -1,0 +1,24 @@
+clip 0,0 96x64
+ground@0,16
+ground@32,16
+ground@64,16
+ground@16,24
+ground@48,24
+ground@80,24
+ground@0,32
+voxel(1,1,1)@0,32 cut=-1
+drawGround(above=False) at 2,2,1
+voxel(2,2,0)@32,48 cut=-1
+voxel(2,2,1)@32,32 cut=-1
+drawGround(above=True) at 3,3,0
+voxel(3,3,0)@64,48 cut=-1
+drawGround(above=True) at 3,3,0
+ground@16,40
+ground@48,40
+ground@80,40
+ground@0,48
+ground@32,48
+ground@64,48
+ground@16,56
+ground@48,56
+ground@80,56
