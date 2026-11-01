@@ -1,6 +1,8 @@
 # Phase 2A fixture tile layouts
 
-This is the construction sheet for the seven Phase 2A saves declared in `fixtures/renderer-oracle/catalog.json`. Use it with `phase2a-legacy-oracle.md`; it does not replace the paired-VM capture and metadata procedure.
+This is the construction sheet for the Phase 2A scene saves declared in `fixtures/renderer-oracle/catalog.json`. Use it with the capture procedure in `phase2a-slim-plan.md` (item 5).
+
+Since the slim plan was approved (2026-11-01), only the official package is captured, in one VM. Statements below about transferring saves to a reconstructed VM no longer apply; the save's SHA-256 is still its identity. §4 now produces only `season-summer-v1` and `season-winter-v1`; spring and autumn are not saved. §2's interaction layer is used only for the valid Condo preview; the clipped preview and road/rail overlays are no longer captured. §3 is captured as one fixed viewport.
 
 ## Coordinate and fidelity rules
 

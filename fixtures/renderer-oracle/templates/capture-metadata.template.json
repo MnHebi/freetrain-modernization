@@ -1,7 +1,0 @@
-{
-  "schemaVersion": 2,
-  "note": "Choose the oracle-specific template; this index is not capture evidence.",
-  "officialReleaseTemplate": "capture-metadata.official.template.json",
-  "reconstructedLegacyTemplate": "capture-metadata.reconstructed.template.json",
-  "comparisonTemplate": "comparison-metadata.template.json"
-}

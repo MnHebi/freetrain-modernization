@@ -63,9 +63,10 @@ The original source archive and official runtime release were supplied after the
 
 ## Phase 2 documents
 
-- `phase2a-slim-plan.md` — proposal: native-vector harness, single-VM primitive dumps, build diff, and a reduced scene set in place of the paired-VM screenshot procedure
-- `phase2a-legacy-oracle.md` — paired official/reconstructed XP fixture matrix, interaction/graphics metadata, operator checklist, and Phase 2A exit gate
-- `phase2a-fixture-layouts.md` — coordinate-addressed ASCII construction plans for terrain, transport, directional, and seasonal saves
+- `phase2a-slim-plan.md` — approved Phase 2A plan: native vectors from the shipped alpha DLL, single-VM DirectDraw primitive dumps, code-derived tests, an official/reconstructed build diff, and nine scene smoke captures
+- `phase2a-fixture-layouts.md` — coordinate-addressed ASCII construction plans for the terrain, transport, directional, and seasonal scene saves
+- `phase2a-legacy-oracle.md` — superseded paired-VM procedure, retained as chronology; its source-derived state evidence remains valid reference material
 - `renderer-compatibility.md` — renderer facade boundary, behavioral oracles, and the Phase 2 test taxonomy
-- `fixtures/renderer-oracle/` — planned fixture catalog, capture metadata schema, immutable-evidence layout, and approval manifest
-- `eng/renderer-oracle.ps1` — paired fixture/hash validation, PNG integrity and exact-region comparison, screenshot cataloguing, and deterministic manifest generation
+- `eng/native-vectors/` and `fixtures/native-vectors/` — fake-surface harness and committed byte-exact vectors for all five native routines in four pixel modes
+- `fixtures/renderer-oracle/` — scene catalog, sidecar format, and evidence layout
+- `eng/renderer-oracle.ps1` — scene validation (hashes, PNG decode, region bounds, reproduction exactness) and exact region comparison

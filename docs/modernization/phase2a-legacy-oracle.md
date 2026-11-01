@@ -1,5 +1,7 @@
 # Phase 2A: paired legacy renderer oracles
 
+> **Superseded 2026-11-01** by `phase2a-slim-plan.md`. This document is retained as preservation chronology. Its source-derived evidence (season, night, cut, label, and controller-interaction paths) remains valid reference material. The paired-VM procedure, capture matrix, schemas, approval manifest, and validator commands below no longer apply; the schemas and manifest were removed from `fixtures/renderer-oracle/`. Follow the slim plan for new captures.
+
 ## Scope
 
 Phase 2A records representative output from two independently identified Windows XP SP3 x86 VMs. It does not add renderer tests, replace DirectDraw, change `QuarterViewDrawer`, introduce `ManagedSurface`, or change production rendering behavior. VCR is not part of this procedure; all images are lossless full-console PNG captures made by VirtualBox.

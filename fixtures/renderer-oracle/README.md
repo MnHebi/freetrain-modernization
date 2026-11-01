@@ -1,22 +1,50 @@
-# Paired renderer-oracle fixtures
+# Scene smoke references
 
-This directory is the repository-side evidence store for Phase 2A. Read `docs/modernization/phase2a-legacy-oracle.md` before creating or approving an artifact.
+Repository-side evidence for Phase 2A item 5. Read `docs/modernization/phase2a-slim-plan.md` before adding anything. Build saves from `docs/modernization/phase2a-fixture-layouts.md`.
 
-Build the official-VM scenes from `docs/modernization/phase2a-fixture-layouts.md`. Its ASCII plans distinguish ordinary tile anchors from the terrain editor's shared-corner vertices. Do not use the plans to independently recreate the reconstructed-VM worlds; transfer the same immutable save bytes.
+- `catalog.json` declares the saves, the nine captures, and the one reproduction.
+- `environment.json` records the single capture VM once (written with the first capture).
+- `saves/<save>.ftgd` holds each save, never resaved after its hash is recorded.
+- `screenshots/<capture>.png` + `screenshots/<capture>.json` hold the primary PNG and its sidecar.
+- `reproduction/<capture>.png` + `reproduction/<capture>.json` hold the fresh-snapshot recapture.
 
-- `catalog.json` declares the required fixtures and capture IDs.
-- `capture-metadata.schema.json` defines each official/reconstructed primary or clean-reproduction sidecar.
-- `comparison-metadata.schema.json` defines official-versus-reconstructed difference records.
-- `templates/` contains separate official, reconstructed, and comparison templates; templates are not evidence.
-- `saves/` receives captured `.ftgd` or `.ftgt` files.
-- `screenshots/<oracle>/{primary,reproduction}/` receives full-console lossless PNGs.
-- `metadata/<oracle>/{primary,reproduction}/` receives one sidecar per screenshot.
-- `comparisons/` receives one official-versus-reconstructed record per logical capture.
-- `masks/` may receive explicitly hashed mask artifacts; rectangle-only masking needs no file.
-- `manifests/approved-files.sha256` seals approved evidence.
+## Sidecar
 
-Statuses are `planned`, `candidate`, or `approved`. Keep partial pairs in staging. A capture becomes `candidate` only when both primary oracle records, any required clean repetitions, and its comparison record exist. After approval, never edit the save, screenshot, sidecar, comparison, or mask; add a versioned fixture.
+```json
+{
+  "captureId": "terrain-day",
+  "save": "terrain-elevation-water-v1",
+  "saveSha256": "<64 hex>",
+  "screenshotSha256": "<64 hex>",
+  "clock": "<status-bar clock string>",
+  "view": {
+    "dayNight": "always-day",
+    "heightCut": "none",
+    "stationNames": false,
+    "controller": "none",
+    "scroll": { "x": 0, "y": 0 },
+    "pointer": { "x": 1000, "y": 740 }
+  },
+  "exactRegions": [ { "id": "map", "x": 0, "y": 0, "width": 0, "height": 0 } ],
+  "reviewRegions": [],
+  "notes": ""
+}
+```
 
-Run `.\eng\renderer-oracle.ps1 -Action Validate` from the repository root. `VerifyPng` checks structural integrity; `CompareRegions` exact-compares declared deterministic pixels between two completed sidecars. The script is read-only unless `-OutputPath` is supplied to `Catalog` or `Manifest`; those actions write only derived text, never evidence.
+Coordinates are full-screen PNG pixels with `(0,0)` at the top left. `exactRegions` contain only deterministic map pixels: no window chrome, scrollbars, labels, tooltips, or cursor. `reviewRegions` name what is excluded and reviewed by eye, such as station labels or a captured cursor. Region IDs must be unique within a sidecar. `Compare` matches regions by ID.
 
-Legacy saves use an unsafe object serializer. Only load controlled VM-created fixtures or explicitly custody-approved historical saves; never deserialize an untrusted save on the host.
+## Environment
+
+`environment.json` is one flat object with non-empty string values for `guest`, `clr`, `ddrawVersion`, `ddrawSha256`, `dx8vbVersion`, `dx8vbSha256`, `virtualBox`, `graphicsController`, and `displayMode`.
+
+## Validation
+
+```powershell
+.\eng\renderer-oracle.ps1                       # Validate; missing captures are pending
+.\eng\renderer-oracle.ps1 -RequireComplete      # exit gate: every capture present
+.\eng\renderer-oracle.ps1 -Action Compare -InputPath <a.json> -OtherInputPath <b.json>
+```
+
+Git is the immutability mechanism. Evidence lands in one commit tagged `phase2a-evidence`. Replace evidence only with a new commit that says why.
+
+Legacy saves use an unsafe object serializer. Load only saves created in the controlled VM, never untrusted input, and never in a host or modern process.

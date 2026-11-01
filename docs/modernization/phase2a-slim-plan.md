@@ -1,6 +1,6 @@
 # Phase 2A (slim): renderer oracles, proportionate to the renderer
 
-Status: **proposal**. If accepted, this replaces `phase2a-legacy-oracle.md`, `phase2a-fixture-layouts.md`, the capture/comparison schemas, and most of `eng/renderer-oracle.ps1`. Until then the existing documents remain the record.
+Status: **approved 2026-11-01**. This is the Phase 2A record. It supersedes the paired-VM procedure in `phase2a-legacy-oracle.md`, which is retained as chronology. `phase2a-fixture-layouts.md` remains the tile-level construction sheet for the scene saves (item 5). The paired capture/comparison schemas, templates, and approval manifest have been removed. `eng/renderer-oracle.ps1` is now the slim scene validator.
 
 ## Why a slimmer plan
 
@@ -80,33 +80,41 @@ The question "is the reconstruction faithful to the shipped release?" is a build
 
 ### 5. Scene smoke screenshots (last)
 
-One VM, official package, 1024 x 768 x 32-bit, VirtualBox lossless PNG. About eight scenes, each a hand-built save committed alongside:
+One VM, official package, 1024 x 768 x 32-bit, VirtualBox lossless PNG. Nine scenes from five hand-built saves, declared in `fixtures/renderer-oracle/catalog.json`:
 
-| Capture | Covers |
-| --- | --- |
-| `terrain-day` | Elevation, slopes, shoreline, water |
-| `terrain-night` | Night palette |
-| `terrain-water-cut` | Height cutting |
-| `transport-day` | Road, rail, station, bridge, 2x2 building, train |
-| `transport-labels` | GDI station names (reviewed by eye, never exact-compared) |
-| `transport-preview` | Alpha construction preview |
-| `season-summer` / `season-winter` | Mountain palette + winter ground chip |
+| Capture | Save | Covers |
+| --- | --- | --- |
+| `terrain-day` | `terrain-elevation-water-v1` | Elevation, slopes, shoreline, water |
+| `terrain-night` | `terrain-elevation-water-v1` | Night palette |
+| `terrain-water-cut` | `terrain-elevation-water-v1` | Height cutting |
+| `transport-day` | `transport-structures-v1` | Road, rail, station, bridge, 2x2 building, train |
+| `transport-labels` | `transport-structures-v1` | GDI station names (review region only, never exact-compared) |
+| `transport-preview` | `transport-structures-v1` | Alpha construction preview |
+| `directional-day` | `directional-content-v1` | N/S/E/W platforms, trains, and occlusion in the fixed camera |
+| `season-summer` | `season-summer-v1` | Summer mountain palette |
+| `season-winter` | `season-winter-v1` | Winter mountain palette and winter ground chip |
 
-Directional content goes inside `transport-day` rather than its own fixture. Spring and autumn are covered by the code-derived tests on palette selection.
+The approved draft folded directional content into `transport-day`. That doesn't fit: the directional layout uses all four edges of its 30 x 30 map, and the transport map is already full. Directional content therefore keeps its own save, but only as one fixed viewport. The conditional four-capture split mode is dropped. If one viewport cannot show all four islands, record that in `notes` as a known limitation. Spring and autumn are covered by the code-derived tests on palette selection.
 
-Each PNG gets one small sidecar: save hash, package, scroll position, clock string, controller state, and the deterministic rectangle(s) excluding chrome and labels. Recapture `terrain-day` once from a fresh snapshot to confirm determinism; that is the only repetition.
+**Capture procedure.**
 
-Git history is the immutability mechanism: evidence lands in one commit, which is tagged `phase2a-evidence`. Replacing evidence is a new commit with a reason. No separate SHA manifest or approval status machine.
+1. One XP SP3 x86 VM snapshot with the network disconnected, containing the unmodified official package. Write `fixtures/renderer-oracle/environment.json` once: XP build, CLR version, `ddraw.dll`/`dx8vb.dll` versions and SHA-256, display mode, VirtualBox version, and graphics controller.
+2. Start FreeTrain from the package root and maximize the main window and the Map child. Turn off `Display station names` and `Display drawing range (debug)`, select `Always day`, and pause the Timer.
+3. Build each save from `phase2a-fixture-layouts.md` §1–§3. For seasons, build the §4 terrain, advance at `Ultra` to July 1 and save `season-summer-v1`, then advance to January 1 and save `season-winter-v1`. Record the status-bar clock string each time. Never resave a save after its hash is recorded.
+4. Capture each scene with the hypervisor's lossless PNG screenshot. Use the toolbar/View settings each row implies. `transport-labels` turns station names on; `transport-preview` hovers the Condo over the valid site from layouts §2 without clicking. Park the pointer outside the map except for the preview.
+5. Write one sidecar `screenshots/<capture>.json` per PNG (format in `fixtures/renderer-oracle/README.md`): hashes, view state, and the exact rectangle(s) of deterministic map pixels. Excluded regions (labels, cursor) go in `reviewRegions`.
+6. Restore the snapshot, reload `terrain-elevation-water-v1` without saving, and recapture `terrain-day` into `reproduction/`. That is the only repetition. Validation requires its exact regions to be pixel-identical to the primary.
+
+Git history is the immutability mechanism: evidence lands in one commit, tagged `phase2a-evidence`. Replacing evidence is a new commit with a reason. There is no separate SHA manifest or approval state.
 
 ## Tooling
 
-Replace the 1,110-line validator with a ~150-line script that:
+`eng/renderer-oracle.ps1` replaces the 1,110-line paired validator:
 
-- decodes PNGs with `System.Drawing` and exact-compares declared rectangles;
-- checks each sidecar's save and image hashes;
-- runs nothing else.
+- `-Action Validate` checks the catalog, every present sidecar's save and screenshot hashes, PNG decodability, rectangle bounds, and stray files. It also exact-compares the reproduction against its primary. Missing captures are reported as pending. Add `-RequireComplete` to make pending captures a failure, for the exit gate.
+- `-Action Compare -InputPath a.json -OtherInputPath b.json` reports exact differing-pixel counts per shared region, for example to compare a managed-backend render against a reference.
 
-Drop the capture/comparison schemas and templates, the CRC/chunk/APNG/`CgBI` checks, cross-VM environment comparison, the pointer-policy taxonomy, and the conditional directional split mode.
+The paired capture/comparison schemas and templates, the approval manifest, CRC/chunk/APNG/`CgBI` checks, cross-VM environment comparison, the pointer-policy taxonomy, and the conditional directional split mode are removed.
 
 ## Dependency change
 
@@ -120,14 +128,14 @@ Phase 2B no longer waits for scene screenshots. Items 1, 3, and 4 can start imme
 - **The managed implementation can be tested automatically:** items 1–3 run in CI with committed vectors.
 - **Unknown legacy behavior is listed:** weather (only `none` is reachable in r389), dirty-region repaint sequencing, and any case the harnesses cannot reach.
 
-## Estimated footprint
+## Footprint
 
-| | Current plan | Slim plan |
+| | Paired-VM plan | Approved plan |
 | --- | --- | --- |
 | Procedure docs | ~630 lines | this page |
-| Validator | 1,110 lines | ~150 lines |
+| Validator | 1,110 lines | 188 lines |
 | Schemas/templates | ~1,100 lines | none |
 | VMs | 2, kept rendering-equivalent | 1 |
-| PNGs | 42–54 | ~9 |
+| PNGs | 42–54 | 10 (9 scenes + 1 reproduction) |
 | Pixel modes covered | 32-bit only | 555, 565, 24, 32 |
 | Runs in CI | none of the oracle | primitive vectors, dumps, code-derived tests |
