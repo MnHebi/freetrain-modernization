@@ -46,7 +46,7 @@ Source and binary are untouched; this is consistent with rules 8 and 10.
 
 - The suite has 28 cases in each of 555, 565, 24-bit, and 32-bit, 112 vectors in all. Each routine runs over the five geometries above: `bltAlphaFast`, `bltShape`, `bltColorTransform` with and without vflip, `bltHueTransform` (plus a second set of targets), and `buildNightImage` (aligned and padded).
 - `bltColorTransform` takes the color tables as raw pinned pointers, matching the IDL `[size_is] int*`. `bltHueTransform` and `buildNightImage` are called as `__cdecl` exports.
-- Every case returned `S_OK`, kept Lock/Unlock balanced, left the source untouched, and wrote nothing past any surface.
+- Every case returned `S_OK`, kept Lock/Unlock balanced, left the source untouched, and wrote nothing past any surface or into any scanline padding. The DLL reported the requested pixel mode. Each of these is now a hard failure, as is a case that changes no destination bytes, and `Write` refuses to replace the baseline from a failing run.
 - Every case changed destination pixels, so no case is a no-op. An independent check of the 32-bit aligned `bltColorTransform` vector confirmed 17/17 pixels mapped, 26/26 keyed pixels kept, and 85/85 copied.
 - Corrupting one bit of one committed vector makes `Check` fail.
 - `fixtures/native-vectors/.gitattributes` marks `.bin` as binary and `.json` as LF, because this checkout uses `core.autocrlf=true`.
@@ -76,7 +76,21 @@ Coordinate conversion, voxel traversal, and season/night resource selection (`Pi
 
 ### 4. Official vs reconstructed: compare the build, not screenshots
 
-The question "is the reconstruction faithful to the shipped release?" is a build question. Answer it once with a disassembly diff (`ildasm` or an equivalent decompiler) of `FreeTrain.Core.dll`, `DirectDraw.net.dll`, and `FreeTrain.exe`, plus a byte/section comparison of `DirectDraw.AlphaBlend.dll`. Classify each difference (timestamps, MVIDs, compiler codegen, genuine source drift) in a short table. If it's clean, the reconstruction is an accepted secondary oracle, and items 1–2 need no duplication against the official package.
+This item measures how far the source-built reconstruction drifts from the shipped release. Run it once, comparing three things:
+
+- a disassembly diff (`ildasm` or an equivalent decompiler) of every managed assembly in both packages, including bundled plug-in assemblies;
+- a byte/section comparison of `DirectDraw.AlphaBlend.dll`;
+- a SHA-256 comparison of every other package file (`res/`, plug-in manifests and payloads, configuration), with additions and omissions listed.
+
+Classify each difference (timestamps, MVIDs, compiler codegen, genuine source drift) in a short table.
+
+A clean result is evidence about the compared artifacts only. It shows that the reconstruction contains the same code and data. It does not establish runtime equivalence: behavior can still depend on things the diff cannot see, such as assembly binding, the COM servers registered in the environment, and differences in the runtime itself. No Phase 2A oracle therefore relies on this diff:
+
+- item 1 already executes the shipped binary;
+- item 2 runs its dump against both packages' `DirectDraw.net.dll` in the same VM;
+- item 5 captures only the official package.
+
+The diff tells later phases which differences need attention before the reconstruction stands in for the shipped release. A claim that the reconstruction renders identically still needs runtime evidence, for example matching item 2 dumps or a matching `terrain-day` capture.
 
 ### 5. Scene smoke screenshots (last)
 
@@ -118,7 +132,7 @@ Git history is the immutability mechanism: evidence lands in one commit, tagged 
 
 `eng/renderer-oracle.ps1` replaces the 1,110-line paired validator:
 
-- `-Action Validate` checks the catalog, every present sidecar's save and screenshot hashes, PNG decodability, rectangle bounds, and stray files. It also exact-compares the reproduction against its primary. Missing captures are reported as pending. Add `-RequireComplete` to make pending captures a failure, for the exit gate.
+- `-Action Validate` checks the catalog, every present sidecar's save and screenshot hashes, the PNG signature and decoder, rectangle bounds, and stray files. It also exact-compares the reproduction against its primary. Missing captures are reported as pending. Add `-RequireComplete` to make pending captures a failure, for the exit gate.
 - `-Action Compare -InputPath a.json -OtherInputPath b.json` reports exact differing-pixel counts per shared region, for example to compare a managed-backend render against a reference.
 
 The paired capture/comparison schemas and templates, the approval manifest, CRC/chunk/APNG/`CgBI` checks, cross-VM environment comparison, the pointer-policy taxonomy, and the conditional directional split mode are removed.
@@ -140,7 +154,7 @@ Phase 2B no longer waits for scene screenshots. Items 1, 3, and 4 can start imme
 | | Paired-VM plan | Approved plan |
 | --- | --- | --- |
 | Procedure docs | ~630 lines | this page |
-| Validator | 1,110 lines | 188 lines |
+| Validator | 1,110 lines | 193 lines |
 | Schemas/templates | ~1,100 lines | none |
 | VMs | 2, kept rendering-equivalent | 1 |
 | PNGs | 42–54 | 10 (9 scenes + 1 reproduction) |

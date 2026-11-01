@@ -92,6 +92,15 @@ namespace FreeTrain.NativeVectors
 			return true;
 		}
 
+		// Bytes between the last pixel of a row and the next row's start.
+		public bool PaddingIntact()
+		{
+			for (int y = 0; y < Height; y++)
+				for (int i = y * Pitch + Width * Bpp; i < (y + 1) * Pitch; i++)
+					if (Marshal.ReadByte(Buffer, i) != GuardByte) return false;
+			return true;
+		}
+
 		public void Set(int x, int y, int v)
 		{
 			for (int k = 0; k < Bpp; k++) Marshal.WriteByte(Buffer, y * Pitch + x * Bpp + k, (byte)(v >> (8 * k)));
@@ -155,7 +164,7 @@ namespace FreeTrain.NativeVectors
 		public int[] Palette = new int[0];  // values injected into the source pattern
 		public int Hr;
 		public byte[] SrcBytes, DstBefore, DstAfter;
-		public bool GuardOk, SrcUnchanged, LocksBalanced;
+		public bool GuardOk, PaddingOk, SrcUnchanged, LocksBalanced;
 	}
 
 	public static class Program
@@ -200,6 +209,12 @@ namespace FreeTrain.NativeVectors
 		}
 
 		static bool Is16 { get { return mode == PixelMode.M555 || mode == PixelMode.M565; } }
+
+		// GetDisplayModeName() strings (AlphaBlender.cpp) for each fake pixel format.
+		static readonly Dictionary<PixelMode, string> ExpectedModeNames = new Dictionary<PixelMode, string> {
+			{ PixelMode.M555, "16bit (555)" }, { PixelMode.M565, "16bit (565)" },
+			{ PixelMode.M24, "24bit" }, { PixelMode.M32, "32bit" },
+		};
 
 		// Correct packing of an 8-bit RGB triple into the current pixel format.
 		static int Pack(int r, int g, int b)
@@ -261,6 +276,7 @@ namespace FreeTrain.NativeVectors
 				Run(c, dst, src);
 				c.DstAfter = dst.Pixels();
 				c.GuardOk = dst.GuardIntact() && (src == null || src.GuardIntact());
+				c.PaddingOk = dst.PaddingIntact() && (src == null || src.PaddingIntact());
 				c.SrcUnchanged = src == null || Same(src.Pixels(), c.SrcBytes);
 				int expectedLocks = src == null ? 1 : 2;
 				c.LocksBalanced = dst.LockCount + (src == null ? 0 : src.LockCount) == expectedLocks
@@ -411,8 +427,9 @@ namespace FreeTrain.NativeVectors
 				using (FakeSurface src = new FakeSurface(mode, 1, 1, 0)) {
 					dst.Set(0, 0, t); src.Set(0, 0, key);
 					IntPtr pd = Com(dst), ps = Com(src);
-					blender.bltAlphaFast(pd, ps, 0, 0, 0, 0, 1, 1, key);
+					int tailHr = blender.bltAlphaFast(pd, ps, 0, 0, 0, 0, 1, 1, key);
 					Marshal.Release(pd); Marshal.Release(ps);
+					if (tailHr != 0) failures.Add(string.Format("control: odd tail returned 0x{0:x8}", tailHr));
 					if (dst.Get(0, 0) != t) failures.Add(string.Format("control: odd tail key -> {0:x4}", dst.Get(0, 0)));
 				}
 
@@ -424,8 +441,9 @@ namespace FreeTrain.NativeVectors
 					int macro = DllMacro(8, 0, 0), packed = Pack(8, 0, 0);
 					s.Set(0, 0, macro); s.Set(1, 0, packed);
 					IntPtr ps = Com(s);
-					buildNightImage(ps);
+					int nightHr = buildNightImage(ps);
 					Marshal.Release(ps);
+					if (nightHr != 0) failures.Add(string.Format("quirk C: buildNightImage returned 0x{0:x8}", nightHr));
 					if (macro == packed) failures.Add("quirk C: macro equals packed value");
 					if (s.Get(0, 0) != DllMacro(255, 8, 8)) failures.Add(string.Format("quirk C: macro (8,0,0) -> {0:x4}", s.Get(0, 0)));
 					if (s.Get(1, 0) != ((packed & nightMask) >> 2)) failures.Add(string.Format("quirk C: packed (8,0,0) -> {0:x4}", s.Get(1, 0)));
@@ -527,6 +545,7 @@ namespace FreeTrain.NativeVectors
 				}
 				j.AppendFormat("      \"hresult\": \"0x{0:x8}\",\n", c.Hr);
 				j.AppendFormat("      \"guardIntact\": {0},\n", c.GuardOk ? "true" : "false");
+				j.AppendFormat("      \"paddingIntact\": {0},\n", c.PaddingOk ? "true" : "false");
 				j.AppendFormat("      \"sourceUnchanged\": {0},\n", c.SrcUnchanged ? "true" : "false");
 				j.AppendFormat("      \"locksBalanced\": {0},\n", c.LocksBalanced ? "true" : "false");
 				j.AppendFormat("      \"changedBytes\": {0},\n", Changed(c.DstBefore, c.DstAfter));
@@ -574,19 +593,24 @@ namespace FreeTrain.NativeVectors
 
 			string detected = Marshal.PtrToStringAnsi(Export<GetDisplayModeNameFn>(module, "GetDisplayModeName")());
 			List<string> failures = Characterize();
+			if (detected != ExpectedModeNames[mode]) failures.Add(string.Format("dll detected \"{0}\", expected \"{1}\"", detected, ExpectedModeNames[mode]));
 			foreach (VectorCase c in cases) {
+				if (c.Hr != 0) failures.Add(string.Format("{0}: returned 0x{1:x8}", c.Id, c.Hr));
 				if (!c.GuardOk) failures.Add(c.Id + ": wrote past the surface");
+				if (!c.PaddingOk) failures.Add(c.Id + ": wrote into scanline padding");
 				if (!c.SrcUnchanged) failures.Add(c.Id + ": modified the source surface");
 				if (!c.LocksBalanced) failures.Add(c.Id + ": unbalanced Lock/Unlock");
+				if (Changed(c.DstBefore, c.DstAfter) == 0) failures.Add(c.Id + ": changed no destination bytes");
 			}
 
 			string index = Index(modeName, cases);
-			if (write) {
+			// Never replace the committed baseline with output from a failing run.
+			if (write && failures.Count == 0) {
 				Directory.CreateDirectory(dir);
 				foreach (string old in Directory.GetFiles(dir, "*.bin")) File.Delete(old);
 				foreach (VectorCase c in cases) File.WriteAllBytes(Path.Combine(dir, c.Id + ".bin"), VectorBytes(c));
 				File.WriteAllText(Path.Combine(dir, "index.json"), index, new UTF8Encoding(false));
-			} else {
+			} else if (!write) {
 				string indexPath = Path.Combine(dir, "index.json");
 				if (!File.Exists(indexPath) || File.ReadAllText(indexPath) != index) failures.Add("index.json differs from committed vectors");
 				foreach (VectorCase c in cases) {
@@ -596,9 +620,8 @@ namespace FreeTrain.NativeVectors
 				if (Directory.Exists(dir) && Directory.GetFiles(dir, "*.bin").Length != cases.Count) failures.Add("unexpected extra vector files");
 			}
 
-			Console.WriteLine("{0}: dll mode \"{1}\", {2} cases, {3}", modeName, detected, cases.Count, write ? "written" : "checked");
-			foreach (VectorCase c in cases)
-				if (c.Hr != 0) Console.WriteLine("  {0} returned 0x{1:x8}", c.Id, c.Hr);
+			string outcome = !write ? "checked" : failures.Count == 0 ? "written" : "NOT written (baseline left unchanged)";
+			Console.WriteLine("{0}: dll mode \"{1}\", {2} cases, {3}", modeName, detected, cases.Count, outcome);
 			foreach (string f in failures) Console.WriteLine("  FAIL " + f);
 			return failures.Count == 0 ? 0 : 1;
 		}

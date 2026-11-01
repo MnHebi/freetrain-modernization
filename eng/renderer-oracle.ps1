@@ -38,11 +38,16 @@ $errors = New-Object System.Collections.Generic.List[string]
 
 function Get-Sha256([string] $Path) { (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant() }
 
-# Decodes a PNG to 32bpp ARGB bytes without holding a lock on the file.
+# Decodes a PNG to 32bpp ARGB bytes without holding a lock on the file. System.Drawing
+# also decodes BMP, JPEG, GIF, and TIFF, so require the PNG signature and decoder.
 function Read-Png([string] $Path) {
-    $stream = New-Object IO.MemoryStream (, [IO.File]::ReadAllBytes($Path))
+    $raw = [IO.File]::ReadAllBytes($Path)
+    $signature = [byte[]] (0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+    if ($raw.Length -lt 8 -or (Compare-Object $signature $raw[0..7] -SyncWindow 0)) { throw 'file does not start with the PNG signature' }
+    $stream = New-Object IO.MemoryStream (, $raw)
     $bitmap = New-Object Drawing.Bitmap $stream
     try {
+        if ($bitmap.RawFormat.Guid -ne [Drawing.Imaging.ImageFormat]::Png.Guid) { throw 'decoder did not identify the file as PNG' }
         $rect = New-Object Drawing.Rectangle 0, 0, $bitmap.Width, $bitmap.Height
         $data = $bitmap.LockBits($rect, [Drawing.Imaging.ImageLockMode]::ReadOnly, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
         $bytes = New-Object byte[] ($data.Stride * $data.Height)
@@ -74,7 +79,7 @@ function Test-Capture([string] $Label, [string] $JsonPath, [string] $PngPath, $C
     elseif ((Get-Sha256 $savePath) -ne $sidecar.saveSha256) { $errors.Add("${Label}: save hash does not match saves/$($Capture.save).ftgd.") }
     if ((Get-Sha256 $PngPath) -ne $sidecar.screenshotSha256) { $errors.Add("${Label}: screenshot hash does not match.") }
 
-    try { $image = Read-Png $PngPath } catch { $errors.Add("${Label}: PNG does not decode: $($_.Exception.Message)"); return $null }
+    try { $image = Read-Png $PngPath } catch { $errors.Add("${Label}: not a valid PNG: $($_.Exception.Message)"); return $null }
     if ($image.Width -ne $catalog.display.width -or $image.Height -ne $catalog.display.height) {
         $errors.Add("${Label}: image is $($image.Width)x$($image.Height), catalog requires $($catalog.display.width)x$($catalog.display.height).")
     }

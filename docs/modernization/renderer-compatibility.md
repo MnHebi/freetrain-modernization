@@ -70,7 +70,7 @@ The legacy DirectDraw renderer is not required to run on the Windows 11 developm
 4. `captured-official-release`: scene smoke screenshots of the official SourceForge release in one XP VM (`fixtures/renderer-oracle/`).
 5. `historical-reference` and `manually-approved`: known-good historical screenshots and manually reviewed reference images.
 
-Faithfulness of the source-built reconstruction to the official release is settled once by a build diff, not by paired screenshots. The values `captured-legacy` and `captured-reconstructed-legacy` are not used for new evidence. Renderer characterization is not gated on reconstructing VCR; preserve VCR source/binaries separately.
+A one-time build diff measures how far the source-built reconstruction drifts from the official release. It is evidence about the compared artifacts, not proof of runtime equivalence, so no Phase 2A oracle depends on it; a claim that the reconstruction renders identically needs runtime evidence. The values `captured-legacy` and `captured-reconstructed-legacy` are not used for new evidence. Renderer characterization is not gated on reconstructing VCR; preserve VCR source/binaries separately.
 
 The approved plan, procedures, and exit-gate mapping are in `phase2a-slim-plan.md`. Native vectors and code-derived tests can start immediately; scene screenshots gate only the scene-smoke part of the exit gate.
 
