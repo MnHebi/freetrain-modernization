@@ -1,0 +1,3 @@
+# run-probe.ps1 -Action Check compares these files byte for byte.
+*.bin binary
+*.json text eol=lf

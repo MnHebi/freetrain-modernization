@@ -63,6 +63,7 @@ The original source archive and official runtime release were supplied after the
 
 ## Phase 2 documents
 
+- `phase2a-slim-plan.md` — proposal: native-vector harness, single-VM primitive dumps, build diff, and a reduced scene set in place of the paired-VM screenshot procedure
 - `phase2a-legacy-oracle.md` — paired official/reconstructed XP fixture matrix, interaction/graphics metadata, operator checklist, and Phase 2A exit gate
 - `phase2a-fixture-layouts.md` — coordinate-addressed ASCII construction plans for terrain, transport, directional, and seasonal saves
 - `renderer-compatibility.md` — renderer facade boundary, behavioral oracles, and the Phase 2 test taxonomy
